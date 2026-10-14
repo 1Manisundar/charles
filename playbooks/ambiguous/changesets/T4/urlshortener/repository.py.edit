@@ -1,0 +1,38 @@
+<<<<<<< SEARCH
+    def record_click(self, code: str, clicked_at: datetime, referrer: str | None) -> None:
+        with self._db.transaction() as conn:
+            conn.execute(
+                "INSERT INTO clicks (code, clicked_at, referrer) VALUES (?, ?, ?)",
+                (code, _ts(clicked_at), referrer),
+            )
+=======
+    def record_click(
+        self, code: str, clicked_at: datetime, referrer: str | None, visitor_hash: str | None = None
+    ) -> None:
+        with self._db.transaction() as conn:
+            conn.execute(
+                "INSERT INTO clicks (code, clicked_at, referrer, visitor_hash) VALUES (?, ?, ?, ?)",
+                (code, _ts(clicked_at), referrer, visitor_hash),
+            )
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+        return [(row["day"], row["n"]) for row in rows]
+=======
+        return [(row["day"], row["n"]) for row in rows]
+
+    def unique_visitors_by_day(self, code: str, since: datetime) -> dict[str, int]:
+        """Distinct visitor identifiers per day. Identifiers rotate daily, so days are not comparable."""
+        rows = self._db.query(
+            "SELECT substr(clicked_at, 1, 10) AS day, COUNT(DISTINCT visitor_hash) AS n FROM clicks "
+            "WHERE code = ? AND clicked_at >= ? AND visitor_hash IS NOT NULL GROUP BY day",
+            (code, _ts(since)),
+        )
+        return {row["day"]: row["n"] for row in rows}
+
+    def referrer_counts(self, code: str) -> list[tuple[str, int]]:
+        rows = self._db.query(
+            "SELECT referrer, COUNT(*) AS n FROM clicks WHERE code = ? AND referrer IS NOT NULL GROUP BY referrer",
+            (code,),
+        )
+        return [(row["referrer"], row["n"]) for row in rows]
+>>>>>>> REPLACE

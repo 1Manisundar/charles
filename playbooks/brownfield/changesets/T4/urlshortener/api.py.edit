@@ -1,0 +1,68 @@
+<<<<<<< SEARCH
+from .repository import Link
+=======
+from .codec import InvalidAlias
+from .repository import Link
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+from .service import CodeSpaceExhausted, InvalidUrl, LinkGone, LinkNotFound, LinkService
+=======
+from .service import (
+    AliasTaken,
+    CodeSpaceExhausted,
+    InvalidExpiry,
+    InvalidUrl,
+    LinkGone,
+    LinkNotFound,
+    LinkService,
+)
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+        is_active=link.is_active,
+    )
+=======
+        is_active=link.is_active,
+        expires_at=link.expires_at,
+        is_custom=link.is_custom,
+    )
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+    responses={**INVALID, 503: {"model": Problem, "description": "No free short code could be allocated"}},
+    summary="Create a short link",
+)
+def create_link(body: CreateLinkRequest, request: Request, service: LinkService = Depends(get_service)) -> LinkResponse:
+    return _link_response(service.create(body.url), request)
+=======
+    responses={
+        **INVALID,
+        409: {"model": Problem, "description": "The requested alias is already taken"},
+        503: {"model": Problem, "description": "No free short code could be allocated"},
+    },
+    summary="Create a short link",
+)
+def create_link(body: CreateLinkRequest, request: Request, service: LinkService = Depends(get_service)) -> LinkResponse:
+    link = service.create(body.url, alias=body.alias, expires_in_seconds=body.expires_in_seconds)
+    return _link_response(link, request)
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+    responses={**NOT_FOUND, 410: {"model": Problem, "description": "The link is no longer available"}},
+=======
+    responses={**NOT_FOUND, 410: {"model": Problem, "description": "The link was deleted or has expired"}},
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+    @app.exception_handler(CodeSpaceExhausted)
+=======
+    @app.exception_handler(InvalidAlias)
+    async def invalid_alias(request: Request, exc: InvalidAlias) -> JSONResponse:
+        return problem(422, "Invalid alias", str(exc))
+
+    @app.exception_handler(InvalidExpiry)
+    async def invalid_expiry(request: Request, exc: InvalidExpiry) -> JSONResponse:
+        return problem(422, "Invalid expiry", str(exc))
+
+    @app.exception_handler(AliasTaken)
+    async def alias_taken(request: Request, exc: AliasTaken) -> JSONResponse:
+        return problem(409, "Alias already taken", "Choose a different alias.")
+
+    @app.exception_handler(CodeSpaceExhausted)
+>>>>>>> REPLACE

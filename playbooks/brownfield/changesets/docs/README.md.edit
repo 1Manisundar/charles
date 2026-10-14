@@ -1,0 +1,22 @@
+<<<<<<< SEARCH
+curl -X DELETE localhost:8000/api/v1/links/q3ZxA1b  # deactivate; the link now answers 410
+=======
+curl -X DELETE localhost:8000/api/v1/links/q3ZxA1b  # deactivate; the link now answers 410
+
+# choose the code yourself and let the link expire after a day
+curl -s -X POST localhost:8000/api/v1/links \
+     -H 'content-type: application/json' \
+     -d '{"url": "https://example.com/spring", "alias": "spring-sale", "expires_in_seconds": 86400}'
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+- **Errors are RFC 7807 problem documents** (`application/problem+json`).
+=======
+- **Links can expire.** `expires_in_seconds` (60 seconds to 365 days) sets a
+  lifetime; from the expiry instant on the link answers `410 Gone`, while its
+  metadata and analytics stay available. Links created without it never expire.
+- **Codes can be chosen.** `alias` (3-32 letters, digits, `-` or `_`) is used as
+  the code. A taken alias is `409 Conflict`; reserved names such as `api` or
+  `docs` are refused. Aliases are case-sensitive and, like every code, are never
+  reused - not even after the link is deleted.
+- **Errors are RFC 7807 problem documents** (`application/problem+json`).
+>>>>>>> REPLACE

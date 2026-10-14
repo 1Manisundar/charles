@@ -1,0 +1,16 @@
+<<<<<<< SEARCH
+## 1.1.0 - Expiring links and custom aliases
+=======
+## 1.2.0 - Abuse protection and privacy-preserving analytics
+
+- Per-client rate limits on link creation and on redirects (`429` + `Retry-After`).
+- Destinations that are internal, disguised, self-referencing, credential-bearing
+  or on the configured blocklist are refused with `422`.
+- Statistics add daily `unique_visitors` and `top_referrers`.
+- Privacy: visitors are counted with a keyed identifier that rotates daily and is
+  never persisted in reversible form; referrers are stored as host only.
+  **Behaviour change:** the full referrer URL is no longer stored.
+- Schema migration 3 (additive: `clicks.visitor_hash`).
+
+## 1.1.0 - Expiring links and custom aliases
+>>>>>>> REPLACE

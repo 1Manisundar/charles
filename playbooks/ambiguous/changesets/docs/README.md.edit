@@ -1,0 +1,43 @@
+<<<<<<< SEARCH
+- **Errors are RFC 7807 problem documents** (`application/problem+json`).
+=======
+- **Requests are rate limited per client.** Link creation and redirects have
+  separate per-minute budgets; beyond them the service answers `429` with a
+  `Retry-After` header. Probes and read-only API calls are not limited.
+- **Unsafe destinations are refused.** A URL that points at a loopback, private
+  or link-local address (in any spelling), at an internal host name, at this
+  service itself, at a blocked domain, or that carries `user@` credentials is
+  rejected with `422`. The check is syntactic and does not resolve DNS.
+- **Analytics hold no personal data.** Unique visitors are counted with an
+  identifier derived from address and user agent under a random key that lives
+  only in memory and changes every day, so it cannot be reversed or linked across
+  days. Only the host of the referrer is stored. Addresses are never logged.
+- **Errors are RFC 7807 problem documents** (`application/problem+json`).
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+| `URLSHORTENER_STATS_DAYS` | `30` | Window of the per-day click breakdown |
+=======
+| `URLSHORTENER_STATS_DAYS` | `30` | Window of the per-day click breakdown |
+| `URLSHORTENER_RATE_LIMIT_CREATE_PER_MINUTE` | `30` | Link creations per client per minute; `0` disables |
+| `URLSHORTENER_RATE_LIMIT_REDIRECT_PER_MINUTE` | `600` | Redirects per client per minute; `0` disables |
+| `URLSHORTENER_TRUST_FORWARDED_FOR` | `false` | Set to `true` only behind exactly one trusted proxy that sets `X-Forwarded-For` |
+| `URLSHORTENER_BLOCKED_DOMAINS` | *(empty)* | Comma-separated domains (and their subdomains) that may not be shortened |
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+- Schema migrations are forward-only and applied automatically at start-up
+  (`urlshortener/migrations.py`).
+=======
+- Schema migrations are forward-only and applied automatically at start-up
+  (`urlshortener/migrations.py`).
+- Rate-limit state and the visitor-identifier key are held in process memory.
+  With several instances each one enforces its own limits and counts its own
+  visitors; move both to a shared store before scaling out.
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+  codec.py        short-code generation
+=======
+  codec.py        short-code generation and alias rules
+  ratelimit.py    token-bucket limiter
+  safety.py       destination vetting
+  privacy.py      anonymous visitor identifiers, referrer reduction
+>>>>>>> REPLACE

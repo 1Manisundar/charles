@@ -1,0 +1,45 @@
+{
+  "name": "ambiguous",
+  "title": "Ambiguous: 'make it more robust and safer, with better insight into who is clicking'",
+  "requirement_file": "requirement.md",
+  "baseline": {
+    "must_exist": ["urlshortener/service.py", "tests/test_expiry_alias.py"],
+    "must_not_exist": ["urlshortener/ratelimit.py"],
+    "hint": "Run the greenfield and brownfield scenarios against the same --target first."
+  },
+  "responses": {
+    "requirements": ["responses/requirements-draft.json", "responses/requirements-final.json"],
+    "architecture": ["responses/design-v1.json", "responses/design-v2.json"],
+    "planning": ["responses/plan-v1.json", "responses/plan-v2.json"],
+    "impl:T1": [{"changeset": "changesets/T1", "rationale": "Limits on and forwarded headers untrusted by default, so an unconfigured deployment is the safe one."}],
+    "impl:T2": [{"changeset": "changesets/T2", "rationale": "Token bucket with continuous refill and a hard cap on tracked clients; time is injected so behaviour is tested without sleeping."}],
+    "impl:T3": [{"changeset": "changesets/T3", "rationale": "Pure function over the parsed URL; numeric-looking hosts must parse as a plain public address so alternative IP spellings cannot slip through."}],
+    "impl:T4": [{"changeset": "changesets/T4", "rationale": "Visitor identifiers are an HMAC under a memory-only key that rotates daily; the schema only ever sees an opaque value."}],
+    "impl:T5": [{"changeset": "changesets/T5", "rationale": "Limits are route dependencies, vetting is part of URL validation, and the redirect path hands only derived, non-identifying values to storage."}],
+    "documentation": [{"changeset": "changesets/docs", "rationale": "README documents limits, destination rules, the privacy model and the single-instance caveats; changelog flags the referrer behaviour change."}]
+  },
+  "approvals": [
+    {
+      "checkpoint": "clarification",
+      "decision": "changes",
+      "by": "alex.product-owner (simulated)",
+      "comment": "Answers below. Keep it to code changes we can ship this sprint.",
+      "answers": {
+        "Q1": "Rate-limit each client. Creation is the abuse vector; give redirects a much looser limit. No caching or scale-out now.",
+        "Q2": "Rule-based blocking plus a configurable blocklist. No external reputation service this quarter.",
+        "Q3": "Aggregates only: unique visitors and top referrers. We must not store IP addresses, user agents or location."
+      }
+    },
+    {
+      "checkpoint": "plan-signoff",
+      "decision": "changes",
+      "target": "architecture",
+      "by": "priya.tech-lead (simulated)",
+      "comment": "Two blockers. (1) ADR-14: SHA-256 of an IP address is not anonymous - the IPv4 space can be enumerated, so this is still personal data and contradicts the product owner's answer to Q3. Use a keyed hash with a key that lives only in memory and rotates daily. (2) ADR-12: trusting X-Forwarded-For unconditionally lets any client pick its own identity and walk around the limiter. Trust it only when a proxy is explicitly configured, and then only the entry the proxy appended."
+    },
+    {"checkpoint": "plan-signoff", "decision": "approve", "by": "priya.tech-lead (simulated)", "comment": "Both points addressed in ADR-12 and ADR-14; plan updated accordingly. Approved."},
+    {"checkpoint": "change-control", "decision": "approve", "by": "dana.dba (simulated)", "comment": "Migration 3 adds one nullable column holding an opaque value. Approved to run."},
+    {"checkpoint": "release", "decision": "approve", "by": "sam.release-manager (simulated)", "comment": "Checklist green; privacy test confirms nothing identifying is stored. Promote."}
+  ],
+  "faults": []
+}

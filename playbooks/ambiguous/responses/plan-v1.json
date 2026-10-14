@@ -1,0 +1,51 @@
+{
+  "summary": "Settings first, because everything reads them. The limiter, the destination check and the analytics storage are independent of each other and run in parallel. A final task wires all three into the service, the API and the application factory.",
+  "test_strategy": "Each building block is unit-tested in isolation with injected time; the wiring task adds API tests for the observable behaviour (429, 422, new statistics fields). The existing 127 tests are the regression net.",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Hardening settings",
+      "description": "Add settings for the per-minute creation and redirect limits and for the domain blocklist, read from the environment with safe defaults.",
+      "kind": "config",
+      "requirement_ids": ["FR-20", "FR-21", "FR-22", "NFR-22"],
+      "depends_on": [],
+      "writes": ["urlshortener/config.py", "tests/test_config.py"]
+    },
+    {
+      "id": "T2",
+      "title": "Token-bucket rate limiter",
+      "description": "An in-memory token bucket per client key with bounded state and an injectable clock.",
+      "kind": "code",
+      "requirement_ids": ["FR-20", "FR-21", "NFR-21"],
+      "depends_on": ["T1"],
+      "writes": ["urlshortener/ratelimit.py", "tests/test_ratelimit.py"]
+    },
+    {
+      "id": "T3",
+      "title": "Destination vetting",
+      "description": "Syntactic checks that refuse non-public, disguised, self-referencing and blocklisted destinations.",
+      "kind": "code",
+      "requirement_ids": ["FR-22"],
+      "depends_on": ["T1"],
+      "writes": ["urlshortener/safety.py", "tests/test_safety.py"]
+    },
+    {
+      "id": "T4",
+      "title": "Visitor analytics storage",
+      "description": "Migration 3 adds clicks.visitor_hash holding SHA-256 of the visitor's address and user agent; the repository stores it and aggregates unique visitors per day and clicks per referrer.",
+      "kind": "migration",
+      "requirement_ids": ["FR-23", "NFR-22"],
+      "depends_on": ["T1"],
+      "writes": ["urlshortener/migrations.py", "urlshortener/repository.py", "tests/test_analytics_repository.py"]
+    },
+    {
+      "id": "T5",
+      "title": "Wire limits, vetting and analytics into the service and API",
+      "description": "Limiter dependencies on the create and redirect routes keyed by X-Forwarded-For or the socket address; destination check in URL validation; visitor hash and referrer host recorded on redirect; statistics extended; error mapping for 429 and unsafe destinations.",
+      "kind": "code",
+      "requirement_ids": ["FR-20", "FR-21", "FR-22", "FR-23", "NFR-20", "NFR-22"],
+      "depends_on": ["T2", "T3", "T4"],
+      "writes": ["urlshortener/service.py", "urlshortener/schemas.py", "urlshortener/api.py", "urlshortener/main.py", "urlshortener/__init__.py", "tests/test_service.py", "tests/test_api_hardening.py"]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+<<<<<<< SEARCH
+    clicks: int = Field(description="Redirects served on that day.")
+=======
+    clicks: int = Field(description="Redirects served on that day.")
+    unique_visitors: int = Field(
+        default=0,
+        description="Distinct visitors that day, counted with anonymous identifiers that change daily.",
+    )
+
+
+class ReferrerCount(BaseModel):
+    host: str = Field(description="Host of the referring page.")
+    clicks: int = Field(description="Redirects that arrived from that host.")
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+    clicks_by_day: list[DailyClicks] = Field(description="Daily redirect counts for the recent window.")
+=======
+    clicks_by_day: list[DailyClicks] = Field(description="Daily redirect counts for the recent window.")
+    top_referrers: list[ReferrerCount] = Field(
+        default_factory=list, description="Most frequent referring hosts since the link was created."
+    )
+>>>>>>> REPLACE

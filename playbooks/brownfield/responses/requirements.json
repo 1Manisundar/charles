@@ -1,0 +1,79 @@
+{
+  "title": "Expiring links and custom aliases",
+  "summary": "Extend the existing link-creation API with two optional inputs - a lifetime after which the link stops redirecting, and a caller-chosen short code - without changing the behaviour of existing links or of clients that do not use the new inputs.",
+  "scenario_type": "brownfield",
+  "functional": [
+    {
+      "id": "FR-10",
+      "statement": "A client can give a link a lifetime when creating it.",
+      "acceptance_criteria": [
+        "POST /api/v1/links accepts optional expires_in_seconds between 60 and 31536000 (365 days)",
+        "The response and the metadata endpoint expose the resulting expires_at",
+        "A value outside the range or of the wrong type returns 422"
+      ],
+      "priority": "must"
+    },
+    {
+      "id": "FR-11",
+      "statement": "An expired link stops redirecting.",
+      "acceptance_criteria": [
+        "From expires_at onwards (inclusive) GET /{code} returns 410 Gone",
+        "Refused visits are not counted as clicks",
+        "Metadata and statistics of an expired link remain available"
+      ],
+      "priority": "must"
+    },
+    {
+      "id": "FR-12",
+      "statement": "A client can choose the short code.",
+      "acceptance_criteria": [
+        "POST /api/v1/links accepts optional alias of 3-32 letters, digits, '-' or '_'",
+        "The alias is used verbatim as the code and the response marks the link as custom"
+      ],
+      "priority": "must"
+    },
+    {
+      "id": "FR-13",
+      "statement": "An alias cannot collide with another link or with the service's own routes.",
+      "acceptance_criteria": [
+        "An alias that is already in use returns 409 and never replaces the existing link",
+        "A malformed alias or a reserved name (api, docs, healthz, readyz, ...) returns 422",
+        "The code of a deleted link cannot be claimed as an alias"
+      ],
+      "priority": "must"
+    }
+  ],
+  "non_functional": [
+    {
+      "id": "NFR-10",
+      "statement": "Backward compatibility: nothing that works today changes.",
+      "acceptance_criteria": [
+        "Requests without the new fields produce the same result as before",
+        "Existing links keep redirecting and never expire",
+        "The existing test-suite passes; any test that changes is changed deliberately and listed"
+      ],
+      "priority": "must"
+    },
+    {
+      "id": "NFR-11",
+      "statement": "Safe schema change: the database upgrade is automatic, additive and atomic.",
+      "acceptance_criteria": [
+        "A populated v1 database upgrades in place with no data loss",
+        "A failing migration leaves the previous schema untouched",
+        "The previous application release still runs against the upgraded schema"
+      ],
+      "priority": "must"
+    }
+  ],
+  "open_questions": [],
+  "assumptions": [
+    {"id": "A10", "statement": "'After a set amount of time' means a lifetime relative to creation, supplied in seconds; an absolute timestamp input is not needed.", "source": "analyst"},
+    {"id": "A11", "statement": "Aliases live in the same namespace as generated codes and are case-sensitive, like generated codes.", "source": "analyst"},
+    {"id": "A12", "statement": "Expiry is not retroactive: links that exist today never expire and cannot be given a lifetime in this change.", "source": "analyst"}
+  ],
+  "out_of_scope": [
+    "Changing the lifetime or alias of an existing link",
+    "Deleting expired links or their analytics",
+    "Per-user ownership of aliases"
+  ]
+}

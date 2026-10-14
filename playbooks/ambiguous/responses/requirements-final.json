@@ -1,0 +1,92 @@
+{
+  "title": "Abuse protection and privacy-preserving analytics",
+  "summary": "Harden the existing service in three confirmed ways: throttle each client (strictly for link creation, loosely for redirects), refuse destinations that are internal, disguised, self-referencing or blocklisted, and extend statistics with unique-visitor and top-referrer aggregates while storing nothing that identifies a visitor.",
+  "scenario_type": "ambiguous",
+  "functional": [
+    {
+      "id": "FR-20",
+      "statement": "Link creation is rate limited per client.",
+      "acceptance_criteria": [
+        "More than the configured number of creations per minute from one client returns 429 with a Retry-After header and a problem document",
+        "The limit is configurable and can be disabled; clients have independent budgets",
+        "X-Forwarded-For identifies the client only when the deployment declares a trusted proxy"
+      ],
+      "priority": "must"
+    },
+    {
+      "id": "FR-21",
+      "statement": "Redirects are rate limited per client with a separate, looser budget.",
+      "acceptance_criteria": [
+        "Exceeding the redirect budget returns 429 and the refused visit is not counted as a click",
+        "Health probes and read-only API calls are never limited"
+      ],
+      "priority": "should"
+    },
+    {
+      "id": "FR-22",
+      "statement": "Unsafe destinations are refused when a link is created.",
+      "acceptance_criteria": [
+        "Loopback, private, link-local and otherwise non-public addresses are refused in every spelling browsers accept",
+        "Internal host names, URLs with embedded credentials and URLs pointing back at the service are refused",
+        "Domains on a configurable blocklist, and their subdomains, are refused",
+        "Refusals return 422 with a reason; ordinary public URLs are unaffected"
+      ],
+      "priority": "must"
+    },
+    {
+      "id": "FR-23",
+      "statement": "Statistics report unique visitors and top referrers.",
+      "acceptance_criteria": [
+        "The per-day breakdown includes the number of distinct visitors that day",
+        "Statistics list the most frequent referring hosts"
+      ],
+      "priority": "should"
+    }
+  ],
+  "non_functional": [
+    {
+      "id": "NFR-20",
+      "statement": "Privacy: no personal data about visitors is persisted or logged.",
+      "acceptance_criteria": [
+        "No IP address or user agent is stored or written to logs",
+        "Visitor identifiers cannot be reversed to an address and cannot be linked across days",
+        "Only the host of a referrer is stored, never its path or query string"
+      ],
+      "priority": "must"
+    },
+    {
+      "id": "NFR-21",
+      "statement": "Bounded resources: protections use constant time and bounded memory.",
+      "acceptance_criteria": [
+        "Rate-limit state never exceeds a fixed number of tracked clients",
+        "Per-request overhead does not grow with the number of clients or clicks"
+      ],
+      "priority": "must"
+    },
+    {
+      "id": "NFR-22",
+      "statement": "Backward compatibility with existing links, clients and data.",
+      "acceptance_criteria": [
+        "Existing response fields are unchanged; new fields are additive",
+        "Existing links and previously recorded clicks keep working and still aggregate",
+        "Safe defaults: limits on, forwarded headers untrusted, empty blocklist"
+      ],
+      "priority": "must"
+    }
+  ],
+  "open_questions": [],
+  "assumptions": [
+    {"id": "A20", "statement": "The three concerns are independent and ship together as one hardening release.", "source": "analyst"},
+    {"id": "A21", "statement": "Q1 answered: 'hammered' means abusive clients, not organic growth. Rate-limit per client; creation is the abuse vector, redirects get a much looser limit. No caching or scale-out in this change.", "source": "human"},
+    {"id": "A22", "statement": "Q2 answered: rule-based blocking only. No external reputation service this quarter; a configurable blocklist covers known bad domains.", "source": "human"},
+    {"id": "A23", "statement": "Q3 answered: aggregates only. Product needs unique visitors and top referrers; storing IP addresses, user agents or location is explicitly rejected.", "source": "human"},
+    {"id": "A24", "statement": "Rate limits are enforced per instance; the service currently runs as a single instance.", "source": "analyst"}
+  ],
+  "out_of_scope": [
+    "Authentication and per-user quotas",
+    "Retroactive vetting of links that already exist",
+    "Redirect caching and horizontal scale-out",
+    "External URL-reputation checks",
+    "Visitor location"
+  ]
+}

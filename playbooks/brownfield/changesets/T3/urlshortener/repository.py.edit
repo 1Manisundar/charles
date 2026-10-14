@@ -1,0 +1,48 @@
+<<<<<<< SEARCH
+    created_at: datetime
+    is_active: bool
+
+
+class DuplicateCode(Exception):
+=======
+    created_at: datetime
+    is_active: bool
+    expires_at: datetime | None = None
+    is_custom: bool = False
+
+
+class DuplicateCode(Exception):
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+        is_active=bool(row["is_active"]),
+    )
+=======
+        is_active=bool(row["is_active"]),
+        expires_at=datetime.fromisoformat(row["expires_at"]) if row["expires_at"] else None,
+        is_custom=bool(row["is_custom"]),
+    )
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+    def insert(self, code: str, long_url: str, created_at: datetime) -> Link:
+        try:
+            with self._db.transaction() as conn:
+                conn.execute(
+                    "INSERT INTO links (code, long_url, created_at) VALUES (?, ?, ?)",
+                    (code, long_url, _ts(created_at)),
+                )
+=======
+    def insert(
+        self,
+        code: str,
+        long_url: str,
+        created_at: datetime,
+        expires_at: datetime | None = None,
+        is_custom: bool = False,
+    ) -> Link:
+        try:
+            with self._db.transaction() as conn:
+                conn.execute(
+                    "INSERT INTO links (code, long_url, created_at, expires_at, is_custom) VALUES (?, ?, ?, ?, ?)",
+                    (code, long_url, _ts(created_at), _ts(expires_at) if expires_at else None, int(is_custom)),
+                )
+>>>>>>> REPLACE

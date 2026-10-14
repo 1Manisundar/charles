@@ -1,0 +1,199 @@
+﻿
+##############################################################################
+# Scenario: greenfield
+##############################################################################
+00:32:35                     run started: scenario=greenfield provider=scripted
+00:32:35  codebase_scan      started by agent:codebase_analyst
+00:32:35  requirements       started by agent:requirements_analyst
+00:32:35  codebase_scan      SUCCEEDED in 0.0s
+00:32:35  requirements       SUCCEEDED in 0.004s
+00:32:35  architecture       started by agent:architect
+00:32:35  architecture       [drill] injected transient fault
+00:32:35  architecture       attempt failed [transient] -> will retry in 0.05s
+00:32:35  architecture       started by agent:architect (attempt 2)
+00:32:35  architecture       SUCCEEDED in 0.052s
+00:32:35  planning           started by agent:planner
+00:32:35  planning           plan v1 -> task graph: added ['impl:T1', 'impl:T2', 'impl:T3', 'impl:T4', 'impl:T5', 'impl:T6'], changed -, removed -, kept -
+00:32:35  planning           HUMAN CHECKPOINT A-001 'plan-signoff' needs role 'tech-lead'
+00:32:35  planning           checkpoint 'plan-signoff' -> APPROVE by human:priya.tech-lead (simulated): Layering and migration approach are sound. Approved for implementation.
+00:32:35  planning           SUCCEEDED in 0.002s
+00:32:35  impl:T1            started by agent:implementer
+00:32:35  impl:T1            SUCCEEDED in 0.013s
+00:32:35  impl:T2            started by agent:implementer
+00:32:35  impl:T3            started by agent:implementer
+00:32:35  impl:T6            started by agent:implementer
+00:32:35  impl:T2            SUCCEEDED in 0.012s
+00:32:35  impl:T6            SUCCEEDED in 0.012s
+00:32:35  impl:T3            SUCCEEDED in 0.024s
+00:32:35  impl:T4            started by agent:implementer
+00:32:35  impl:T4            SUCCEEDED in 0.01s
+00:32:35  impl:T5            started by agent:implementer
+00:32:35  impl:T5            SUCCEEDED in 0.072s
+00:32:35  implementation     started by agent:sync_join
+00:32:35  implementation     SUCCEEDED in 0.015s
+00:32:35  documentation      started by agent:doc_writer
+00:32:35  security_review    started by agent:security_reviewer
+00:32:35  verification       started by agent:verifier
+00:32:36  security_review    SUCCEEDED in 0.026s
+00:32:36  documentation      SUCCEEDED in 0.524s
+00:32:38  verification       SUCCEEDED in 2.187s
+00:32:38  release_readiness  started by agent:release_manager
+00:32:38  release_readiness  HUMAN CHECKPOINT A-002 'release' needs role 'release-manager'
+00:32:38  release_readiness  checkpoint 'release' -> APPROVE by human:sam.release-manager (simulated): Checklist green, coverage above threshold. Promote.
+00:32:38  release_readiness  SUCCEEDED in 0.023s
+00:32:38  promotion          started by agent:promoter
+00:32:38  promotion          PROMOTED to target: 25 added, 0 modified, 0 deleted
+00:32:38  promotion          SUCCEEDED in 0.015s
+00:32:38                     run SUCCEEDED
+
+Run greenfield: SUCCEEDED
+  summary : demo\sample\runs\greenfield\ENGINEERING_SUMMARY.md
+  audit   : demo\sample\runs\greenfield\audit.jsonl
+
+##############################################################################
+# Scenario: brownfield
+##############################################################################
+00:32:38                     run started: scenario=brownfield provider=scripted
+00:32:38  codebase_scan      started by agent:codebase_analyst
+00:32:38  requirements       started by agent:requirements_analyst
+00:32:38  codebase_scan      SUCCEEDED in 0.026s
+00:32:38  requirements       SUCCEEDED in 0.029s
+00:32:38  architecture       started by agent:architect
+00:32:38  architecture       SUCCEEDED in 0.001s
+00:32:38  planning           started by agent:planner
+00:32:38  planning           plan v1 -> task graph: added ['impl:T1', 'impl:T2', 'impl:T3', 'impl:T4'], changed -, removed -, kept -
+00:32:38  planning           HUMAN CHECKPOINT A-001 'plan-signoff' needs role 'tech-lead'
+00:32:38  planning           checkpoint 'plan-signoff' -> APPROVE by human:priya.tech-lead (simulated): Additive migration and lazy expiry are the right call. Approved.
+00:32:38  planning           SUCCEEDED in 0.001s
+00:32:38  impl:T1            HUMAN CHECKPOINT A-002 'change-control:T1' needs role 'change-advisory'
+00:32:38  impl:T2            started by agent:implementer
+00:32:38  impl:T2            SUCCEEDED in 0.012s
+00:32:38  impl:T1            checkpoint 'change-control:T1' -> APPROVE by human:dana.dba (simulated): Reviewed migration 2: additive, transactional, app-only rollback. Approved to run.
+00:32:38  impl:T1            started by agent:implementer
+00:32:38  impl:T1            SUCCEEDED in 0.011s
+00:32:38  impl:T3            started by agent:implementer
+00:32:38  impl:T3            [drill] injected corrupt_change fault
+00:32:38  impl:T3            SUCCEEDED in 0.016s
+00:32:38  impl:T4            started by agent:implementer
+00:32:38  impl:T4            SUCCEEDED in 0.058s
+00:32:38  implementation     started by agent:sync_join
+00:32:38  implementation     SUCCEEDED in 0.019s
+00:32:38  documentation      started by agent:doc_writer
+00:32:38  security_review    started by agent:security_reviewer
+00:32:38  verification       started by agent:verifier
+00:32:38  security_review    SUCCEEDED in 0.027s
+00:32:39  documentation      SUCCEEDED in 0.473s
+00:32:41  verification       gate tests_pass (exit) FAILED: 3 of 127 tests failed:
+00:32:41  verification       attempt failed [gate]
+00:32:41  verification       REWORK round 1/2: re-opening ['impl:T3', 'impl:T4']
+00:32:41  documentation      rolled back 4 file(s): rework round 1 requested by 'verification'
+00:32:41  impl:T4            rolled back 4 file(s): rework round 1 requested by 'verification'
+00:32:41  impl:T3            rolled back 3 file(s): rework round 1 requested by 'verification'
+00:32:41  implementation     marked stale: upstream 'impl:T3' re-opened
+00:32:41  security_review    marked stale: upstream 'impl:T3' re-opened
+00:32:41  impl:T3            re-opened by orchestrator: rework round 1 requested by 'verification'
+00:32:41  impl:T4            re-opened by orchestrator: rework round 1 requested by 'verification'
+00:32:41  impl:T3            started by agent:implementer
+00:32:41  impl:T3            SUCCEEDED in 0.017s
+00:32:41  impl:T4            started by agent:implementer
+00:32:41  impl:T4            SUCCEEDED in 0.018s
+00:32:41  implementation     started by agent:sync_join
+00:32:41  implementation     SUCCEEDED in 0.057s
+00:32:41  documentation      started by agent:doc_writer
+00:32:41  security_review    started by agent:security_reviewer
+00:32:41  verification       started by agent:verifier
+00:32:41  security_review    SUCCEEDED in 0.026s
+00:32:42  documentation      SUCCEEDED in 0.433s
+00:32:44  verification       SUCCEEDED in 2.88s
+00:32:44  release_readiness  started by agent:release_manager
+00:32:44  release_readiness  HUMAN CHECKPOINT A-003 'release' needs role 'release-manager'
+00:32:44  release_readiness  checkpoint 'release' -> APPROVE by human:sam.release-manager (simulated): Regression suite green after one rework round; migration tested on v1 data. Promote.
+00:32:44  release_readiness  SUCCEEDED in 0.021s
+00:32:44  promotion          started by agent:promoter
+00:32:44  promotion          PROMOTED to target: 3 added, 12 modified, 0 deleted
+00:32:44  promotion          SUCCEEDED in 0.016s
+00:32:44                     run SUCCEEDED
+
+Run brownfield: SUCCEEDED
+  summary : demo\sample\runs\brownfield\ENGINEERING_SUMMARY.md
+  audit   : demo\sample\runs\brownfield\audit.jsonl
+
+##############################################################################
+# Scenario: ambiguous
+##############################################################################
+00:32:44                     run started: scenario=ambiguous provider=scripted
+00:32:44  codebase_scan      started by agent:codebase_analyst
+00:32:44  requirements       started by agent:requirements_analyst
+00:32:44  codebase_scan      SUCCEEDED in 0.031s
+00:32:44  requirements       HUMAN CHECKPOINT A-001 'clarification' needs role 'product-owner'
+00:32:44  requirements       checkpoint 'clarification' -> CHANGES by human:alex.product-owner (simulated): Answers below. Keep it to code changes we can ship this sprint.
+00:32:44  requirements       re-opened by human:alex.product-owner (simulated): changes requested at 'clarification'
+00:32:44  requirements       started by agent:requirements_analyst
+00:32:44  requirements       SUCCEEDED in 0.005s
+00:32:44  architecture       started by agent:architect
+00:32:44  architecture       SUCCEEDED in 0.001s
+00:32:44  planning           started by agent:planner
+00:32:44  planning           plan v1 -> task graph: added ['impl:T1', 'impl:T2', 'impl:T3', 'impl:T4', 'impl:T5'], changed -, removed -, kept -
+00:32:44  planning           HUMAN CHECKPOINT A-002 'plan-signoff' needs role 'tech-lead'
+00:32:45  planning           checkpoint 'plan-signoff' -> CHANGES by human:priya.tech-lead (simulated): Two blockers. (1) ADR-14: SHA-256 of an IP address is not anonymous - the IPv4 space can be enumerated, so this is still personal data and contradicts the product owner's answer to Q3. Use a keyed hash with a key that lives only in memory and rotates daily. (2) ADR-12: trusting X-Forwarded-For unconditionally lets any client pick its own identity and walk around the limiter. Trust it only when a proxy is explicitly configured, and then only the entry the proxy appended.
+00:32:45  planning           marked stale: upstream 'architecture' re-opened
+00:32:45  architecture       re-opened by human:priya.tech-lead (simulated): changes requested at 'plan-signoff'
+00:32:45  architecture       started by agent:architect
+00:32:45  architecture       SUCCEEDED in 0.001s
+00:32:45  planning           started by agent:planner
+00:32:45  planning           plan v2 -> task graph: added -, changed ['impl:T1', 'impl:T4', 'impl:T5'], removed -, kept ['impl:T2', 'impl:T3']
+00:32:45  planning           HUMAN CHECKPOINT A-003 'plan-signoff' needs role 'tech-lead'
+00:32:45  planning           checkpoint 'plan-signoff' -> APPROVE by human:priya.tech-lead (simulated): Both points addressed in ADR-12 and ADR-14; plan updated accordingly. Approved.
+00:32:45  planning           SUCCEEDED in 0.001s
+00:32:45  impl:T1            started by agent:implementer
+00:32:45  impl:T1            SUCCEEDED in 0.012s
+00:32:45  impl:T2            started by agent:implementer
+00:32:45  impl:T3            started by agent:implementer
+00:32:45  impl:T4            HUMAN CHECKPOINT A-004 'change-control:T4' needs role 'change-advisory'
+00:32:45  impl:T2            SUCCEEDED in 0.019s
+00:32:45  impl:T4            checkpoint 'change-control:T4' -> APPROVE by human:dana.dba (simulated): Migration 3 adds one nullable column holding an opaque value. Approved to run.
+00:32:45  impl:T4            started by agent:implementer
+00:32:45  impl:T4            SUCCEEDED in 0.018s
+00:32:45  impl:T3            SUCCEEDED in 0.041s
+00:32:45  impl:T5            started by agent:implementer
+00:32:45  impl:T5            SUCCEEDED in 0.073s
+00:32:45  implementation     started by agent:sync_join
+00:32:45  implementation     SUCCEEDED in 0.023s
+00:32:45  documentation      started by agent:doc_writer
+00:32:45  security_review    started by agent:security_reviewer
+00:32:45  verification       started by agent:verifier
+00:32:45  security_review    SUCCEEDED in 0.037s
+00:32:45  documentation      SUCCEEDED in 0.5s
+00:32:49  verification       SUCCEEDED in 3.841s
+00:32:49  release_readiness  started by agent:release_manager
+00:32:49  release_readiness  HUMAN CHECKPOINT A-005 'release' needs role 'release-manager'
+00:32:49  release_readiness  checkpoint 'release' -> APPROVE by human:sam.release-manager (simulated): Checklist green; privacy test confirms nothing identifying is stored. Promote.
+00:32:49  release_readiness  SUCCEEDED in 0.023s
+00:32:49  promotion          started by agent:promoter
+00:32:49  promotion          PROMOTED to target: 7 added, 14 modified, 0 deleted
+00:32:49  promotion          SUCCEEDED in 0.017s
+00:32:49                     run SUCCEEDED
+
+Run ambiguous: SUCCEEDED
+  summary : demo\sample\runs\ambiguous\ENGINEERING_SUMMARY.md
+  audit   : demo\sample\runs\ambiguous\audit.jsonl
+
+Fleet reliability metrics across the three runs:
+{
+  "runs": 3,
+  "runs_terminal": 3,
+  "runs_in_flight": 0,
+  "success_rate": 1.0,
+  "retry_frequency": 0.018,
+  "rollbacks_per_run": 1.0,
+  "rework_rounds_per_run": 0.333,
+  "incidents": 2,
+  "incidents_recovered": 2,
+  "mttr_s": 1.547,
+  "latency_p50_s": 4.295,
+  "latency_p95_s": 6.366
+}
+
+Service built at : demo\sample\service
+Run records      : demo\sample\runs
+Try it           : cd demo\sample\service && python -m uvicorn urlshortener.main:create_app --factory

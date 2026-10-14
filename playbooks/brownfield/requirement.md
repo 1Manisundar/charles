@@ -1,0 +1,1 @@
+Marketing wants two additions to the existing URL shortener. First, campaign links should stop working after a set amount of time. Second, they want to choose the short code themselves (for example /spring-sale) instead of getting a random one. Links that already exist must keep working exactly as they do today.

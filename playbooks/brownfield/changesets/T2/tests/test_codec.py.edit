@@ -1,0 +1,38 @@
+<<<<<<< SEARCH
+from urlshortener.codec import ALPHABET, generate_code, is_valid_code
+=======
+from urlshortener.codec import ALPHABET, InvalidAlias, generate_code, is_valid_code, validate_alias
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+@pytest.mark.parametrize("candidate", ["", "abc", "has space",
+=======
+@pytest.mark.parametrize("candidate", ["", "ab", "has space",
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+    assert not is_valid_code(candidate)
+=======
+    assert not is_valid_code(candidate)
+
+
+@pytest.mark.parametrize("alias", ["spring-sale", "Q4_2026", "abc", "a" * 32])
+def test_well_formed_aliases_are_accepted(alias):
+    """FR-12: letters, digits, '-' and '_' (3-32 characters) are valid aliases and valid codes."""
+    assert validate_alias(alias) == alias
+    assert is_valid_code(alias)
+
+
+@pytest.mark.parametrize(
+    "alias", ["", "ab", "a" * 33, "-leading", "_leading", "has space", "slash/inside", "dot.inside", "café-bar"]
+)
+def test_malformed_aliases_are_rejected(alias):
+    """FR-13: aliases that could break routing or look like paths are refused."""
+    with pytest.raises(InvalidAlias):
+        validate_alias(alias)
+
+
+@pytest.mark.parametrize("alias", ["api", "docs", "healthz", "readyz", "API", "Docs"])
+def test_reserved_names_are_rejected(alias):
+    """FR-13: an alias may not shadow a route the service owns, whatever its casing."""
+    with pytest.raises(InvalidAlias):
+        validate_alias(alias)
+>>>>>>> REPLACE

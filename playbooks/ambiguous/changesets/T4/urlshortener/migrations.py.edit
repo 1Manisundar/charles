@@ -1,0 +1,19 @@
+<<<<<<< SEARCH
+        ALTER TABLE links ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0;
+        """,
+    ),
+]
+=======
+        ALTER TABLE links ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0;
+        """,
+    ),
+    (
+        3,
+        # An opaque daily identifier (see privacy.py), never an address. Nullable:
+        # clicks recorded before this migration simply have no visitor.
+        """
+        ALTER TABLE clicks ADD COLUMN visitor_hash TEXT;
+        """,
+    ),
+]
+>>>>>>> REPLACE

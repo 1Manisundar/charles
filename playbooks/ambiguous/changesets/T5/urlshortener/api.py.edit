@@ -1,0 +1,114 @@
+<<<<<<< SEARCH
+from .codec import InvalidAlias
+from .repository import Link
+from .schemas import CreateLinkRequest, DailyClicks, LinkResponse, Problem, StatsResponse
+=======
+from .codec import InvalidAlias
+from .ratelimit import RateLimited
+from .repository import Link
+from .schemas import CreateLinkRequest, DailyClicks, LinkResponse, Problem, ReferrerCount, StatsResponse
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+    LinkService,
+)
+=======
+    LinkService,
+    UnsafeDestination,
+)
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+INVALID = {422: {"model": Problem, "description": "The request was rejected by validation"}}
+=======
+INVALID = {422: {"model": Problem, "description": "The request was rejected by validation"}}
+TOO_MANY = {429: {"model": Problem, "description": "Rate limit exceeded; retry after the Retry-After delay"}}
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+def get_service(request: Request) -> LinkService:
+    return request.app.state.link_service
+=======
+def get_service(request: Request) -> LinkService:
+    return request.app.state.link_service
+
+
+def client_address(request: Request) -> str:
+    """The address that rate limits and visitor counts are keyed on.
+
+    X-Forwarded-For is believed only when the deployment declares one trusted
+    proxy in front of the service, and then only its last entry - the address
+    that proxy itself saw. Earlier entries, and the whole header without a
+    proxy, are chosen by the client and would let it dodge the limits.
+    """
+    if request.app.state.settings.trust_forwarded_for:
+        forwarded = request.headers.get("x-forwarded-for", "").split(",")[-1].strip()
+        if forwarded:
+            return forwarded
+    return request.client.host if request.client else "unknown"
+
+
+def rate_limited(bucket: str):
+    """Dependency factory: spend one token from the named limiter for the calling client."""
+
+    def dependency(request: Request) -> None:
+        wait = request.app.state.rate_limiters[bucket].check(client_address(request))
+        if wait > 0:
+            raise RateLimited(wait)
+
+    return dependency
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+    response_model=LinkResponse,
+    responses={
+        **INVALID,
+=======
+    response_model=LinkResponse,
+    dependencies=[Depends(rate_limited("create"))],
+    responses={
+        **INVALID,
+        **TOO_MANY,
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+        clicks_by_day=[DailyClicks(date=day, clicks=count) for day, count in stats.clicks_by_day],
+=======
+        clicks_by_day=[
+            DailyClicks(date=day, clicks=count, unique_visitors=stats.unique_visitors_by_day.get(day, 0))
+            for day, count in stats.clicks_by_day
+        ],
+        top_referrers=[ReferrerCount(host=host, clicks=count) for host, count in stats.top_referrers],
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+    response_class=RedirectResponse,
+    responses={**NOT_FOUND, 410: {"model": Problem, "description": "The link was deleted or has expired"}},
+=======
+    response_class=RedirectResponse,
+    dependencies=[Depends(rate_limited("redirect"))],
+    responses={
+        **NOT_FOUND,
+        **TOO_MANY,
+        410: {"model": Problem, "description": "The link was deleted or has expired"},
+    },
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+    destination = service.resolve(code, referrer=request.headers.get("referer"))
+=======
+    destination = service.resolve(
+        code,
+        referrer=request.headers.get("referer"),
+        client_address=client_address(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+    @app.exception_handler(InvalidAlias)
+=======
+    @app.exception_handler(UnsafeDestination)
+    async def unsafe_destination(request: Request, exc: UnsafeDestination) -> JSONResponse:
+        return problem(422, "Unsafe destination", str(exc))
+
+    @app.exception_handler(RateLimited)
+    async def too_many_requests(request: Request, exc: RateLimited) -> JSONResponse:
+        response = problem(429, "Too many requests", "Rate limit exceeded; retry after the indicated delay.")
+        response.headers["Retry-After"] = str(exc.retry_after_seconds)
+        return response
+
+    @app.exception_handler(InvalidAlias)
+>>>>>>> REPLACE

@@ -1,0 +1,107 @@
+{
+  "title": "URL shortener service v1",
+  "summary": "A stateless HTTP API backed by a persistent store that creates short links, redirects visitors to the original URL, exposes link metadata and click analytics, and is operable in production (probes, structured errors, durable data).",
+  "scenario_type": "greenfield",
+  "functional": [
+    {
+      "id": "FR-1",
+      "statement": "A client can create a short link for an http(s) URL.",
+      "acceptance_criteria": [
+        "POST /api/v1/links with a valid URL returns 201 with code, short_url, long_url and created_at",
+        "The code is 7 base62 characters and unique",
+        "A missing, malformed, non-http(s) or over-long URL returns 422 with a problem document"
+      ],
+      "priority": "must"
+    },
+    {
+      "id": "FR-2",
+      "statement": "Opening a short link redirects to the original URL.",
+      "acceptance_criteria": [
+        "GET /{code} returns 307 with the long URL in Location",
+        "An unknown code returns 404"
+      ],
+      "priority": "must"
+    },
+    {
+      "id": "FR-3",
+      "statement": "A client can look up a link's metadata.",
+      "acceptance_criteria": [
+        "GET /api/v1/links/{code} returns the stored link",
+        "An unknown code returns 404"
+      ],
+      "priority": "must"
+    },
+    {
+      "id": "FR-4",
+      "statement": "A client can remove a link.",
+      "acceptance_criteria": [
+        "DELETE /api/v1/links/{code} returns 204 and is idempotent",
+        "A removed link answers 410 on redirect and keeps its metadata and analytics"
+      ],
+      "priority": "must"
+    },
+    {
+      "id": "FR-5",
+      "statement": "The service reports how often each link is used.",
+      "acceptance_criteria": [
+        "Every successful redirect is recorded with its time and referrer",
+        "GET /api/v1/links/{code}/stats returns total clicks, the last click time and a per-day breakdown"
+      ],
+      "priority": "must"
+    }
+  ],
+  "non_functional": [
+    {
+      "id": "NFR-1",
+      "statement": "Reliability: the service is operable in production.",
+      "acceptance_criteria": [
+        "Liveness and readiness probes exist; readiness fails when the database is unreachable",
+        "Data survives a process restart",
+        "No request path returns an unhandled 500 for bad input; code collisions are retried a bounded number of times"
+      ],
+      "priority": "must"
+    },
+    {
+      "id": "NFR-2",
+      "statement": "Security: untrusted input cannot alter queries, logs or stored data shape.",
+      "acceptance_criteria": [
+        "All SQL uses bound parameters",
+        "URLs, codes and headers are validated or bounded before use",
+        "No secrets in the codebase"
+      ],
+      "priority": "must"
+    },
+    {
+      "id": "NFR-3",
+      "statement": "Observability: requests can be correlated across logs.",
+      "acceptance_criteria": [
+        "Every response carries an X-Request-ID; a safe caller-supplied id is propagated",
+        "Each request is logged with method, path, status and duration"
+      ],
+      "priority": "should"
+    },
+    {
+      "id": "NFR-4",
+      "statement": "Maintainability: the code is layered, configurable and tested.",
+      "acceptance_criteria": [
+        "HTTP, business rules and persistence are separate modules",
+        "Configuration comes from environment variables with working defaults",
+        "Line coverage is at least 85 percent and the OpenAPI schema is published"
+      ],
+      "priority": "should"
+    }
+  ],
+  "open_questions": [],
+  "assumptions": [
+    {"id": "A1", "statement": "The API is unauthenticated in v1; it is deployed behind a trusted gateway.", "source": "analyst"},
+    {"id": "A2", "statement": "A single instance with an embedded database is sufficient for the prototype's load.", "source": "analyst"},
+    {"id": "A3", "statement": "Shortening the same URL twice yields two independent links.", "source": "analyst"},
+    {"id": "A4", "statement": "'Basic analytics' means click counts over time, not visitor identity.", "source": "analyst"}
+  ],
+  "out_of_scope": [
+    "Authentication and per-user link ownership",
+    "Custom aliases and link expiry",
+    "Rate limiting and abuse protection",
+    "A web UI"
+  ]
+}

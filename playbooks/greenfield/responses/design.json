@@ -1,0 +1,95 @@
+{
+  "overview": "A layered FastAPI application: an HTTP layer that only translates requests and errors, a service layer that owns the business rules, and a repository that owns all SQL against an embedded SQLite database. The application is built by a factory so tests and deployments inject their own settings.",
+  "components": [
+    {"name": "config", "path": "urlshortener/config.py", "responsibility": "Typed settings read from URLSHORTENER_* environment variables", "change": "new"},
+    {"name": "codec", "path": "urlshortener/codec.py", "responsibility": "Generate and syntactically validate short codes", "change": "new"},
+    {"name": "migrations", "path": "urlshortener/migrations.py", "responsibility": "Versioned, forward-only schema", "change": "new"},
+    {"name": "db", "path": "urlshortener/db.py", "responsibility": "Connection, transactions and the migration runner", "change": "new"},
+    {"name": "repository", "path": "urlshortener/repository.py", "responsibility": "All SQL for links and click events", "change": "new"},
+    {"name": "service", "path": "urlshortener/service.py", "responsibility": "URL validation, code allocation with bounded retry, redirect resolution, statistics", "change": "new"},
+    {"name": "schemas", "path": "urlshortener/schemas.py", "responsibility": "Request and response models that define the API contract", "change": "new"},
+    {"name": "api", "path": "urlshortener/api.py", "responsibility": "Routes and the mapping from domain errors to RFC 7807 responses", "change": "new"},
+    {"name": "main", "path": "urlshortener/main.py", "responsibility": "Application factory, request-id middleware, health probes", "change": "new"}
+  ],
+  "api": [
+    {"method": "POST", "path": "/api/v1/links", "summary": "Create a short link", "change": "new"},
+    {"method": "GET", "path": "/api/v1/links/{code}", "summary": "Link metadata", "change": "new"},
+    {"method": "DELETE", "path": "/api/v1/links/{code}", "summary": "Deactivate a link", "change": "new"},
+    {"method": "GET", "path": "/api/v1/links/{code}/stats", "summary": "Click analytics", "change": "new"},
+    {"method": "GET", "path": "/{code}", "summary": "Redirect to the long URL", "change": "new"},
+    {"method": "GET", "path": "/", "summary": "Service index pointing at the documentation", "change": "new"},
+    {"method": "GET", "path": "/healthz", "summary": "Liveness probe", "change": "new"},
+    {"method": "GET", "path": "/readyz", "summary": "Readiness probe", "change": "new"}
+  ],
+  "data_model": [
+    {"entity": "links", "change": "New table: code (PK), long_url, created_at, is_active", "requires_migration": true},
+    {"entity": "clicks", "change": "New table: id, code (FK), clicked_at, referrer; index on (code, clicked_at)", "requires_migration": true},
+    {"entity": "schema_migrations", "change": "New table recording applied migration versions", "requires_migration": true}
+  ],
+  "impacted_modules": [],
+  "decisions": [
+    {
+      "id": "ADR-1",
+      "title": "FastAPI on SQLite behind a repository seam",
+      "context": "The prototype must run with one command and no infrastructure, yet must not lock the design into an embedded database.",
+      "decision": "Use FastAPI with the standard-library sqlite3 driver. Only repository.py and db.py know SQL.",
+      "alternatives": ["PostgreSQL from day one (needs infrastructure to run the prototype)", "An ORM (more dependencies and indirection than six queries justify)"],
+      "consequences": "Zero-setup local runs and tests; moving to a client/server database replaces two modules. Write throughput is limited to one writer."
+    },
+    {
+      "id": "ADR-2",
+      "title": "Random base62 codes with database-enforced uniqueness",
+      "context": "Codes must be short, unique and not enumerable.",
+      "decision": "Generate 7 random base62 characters from the OS CSPRNG; rely on the primary key for uniqueness and retry a collision up to 5 times.",
+      "alternatives": ["Encode an auto-increment id (enumerable, reveals volume)", "Hash of the URL (forces deduplication, collisions on truncation)"],
+      "consequences": "No coordination between instances is needed. Collision probability stays negligible until billions of links; exhaustion surfaces as a retryable 503."
+    },
+    {
+      "id": "ADR-3",
+      "title": "307 redirects that are never cached",
+      "context": "Analytics are only correct if every visit reaches the service.",
+      "decision": "Answer GET /{code} with 307 and Cache-Control: no-store.",
+      "alternatives": ["301 permanent redirect (cached by browsers, undercounts clicks and makes deletion ineffective)"],
+      "consequences": "Accurate counts and immediate effect of deletion, at the cost of one extra round trip per visit."
+    },
+    {
+      "id": "ADR-4",
+      "title": "Soft delete",
+      "context": "Removing a link must stop redirects without destroying its history.",
+      "decision": "DELETE marks the link inactive; redirects then answer 410 Gone.",
+      "alternatives": ["Hard delete (loses analytics, lets a code be reissued to a different destination)"],
+      "consequences": "Codes are never reused, which prevents old links from silently pointing somewhere new."
+    },
+    {
+      "id": "ADR-5",
+      "title": "Forward-only migrations applied at start-up",
+      "context": "The schema must be reproducible and evolvable by later changes.",
+      "decision": "Keep an ordered list of migrations; apply the pending ones transactionally on start and record them in schema_migrations.",
+      "alternatives": ["A migration framework (unneeded dependency for a single-file schema)", "CREATE TABLE IF NOT EXISTS (cannot express later changes)"],
+      "consequences": "A new instance and an upgraded instance converge on the same schema. Rolling back a release requires migrations to be backward compatible."
+    }
+  ],
+  "risks": [
+    {"id": "R1", "description": "SQLite allows a single writer; redirect bursts queue behind click inserts.", "likelihood": "medium", "impact": "medium", "mitigation": "WAL mode and a busy timeout; the repository seam allows moving to a server database or buffering clicks."},
+    {"id": "R2", "description": "The service can be used to disguise malicious destinations (open redirect by design).", "likelihood": "medium", "impact": "high", "mitigation": "Only http(s) URLs are accepted in v1; destination vetting and rate limiting are explicitly out of scope and tracked as follow-up."},
+    {"id": "R3", "description": "The clicks table grows without bound.", "likelihood": "high", "impact": "low", "mitigation": "Indexed by (code, clicked_at); the stats window is bounded. Retention or roll-ups are a follow-up."},
+    {"id": "R4", "description": "Unauthenticated API allows anyone to create or delete links.", "likelihood": "high", "impact": "medium", "mitigation": "Assumption A1: deployed behind a trusted gateway. Authentication is out of scope for v1."}
+  ],
+  "requirement_coverage": [
+    {"requirement_id": "FR-1", "approach": "POST /api/v1/links -> LinkService.create validates the URL and allocates a code with bounded retry"},
+    {"requirement_id": "FR-2", "approach": "GET /{code} -> LinkService.resolve returns the destination; the route answers 307"},
+    {"requirement_id": "FR-3", "approach": "GET /api/v1/links/{code} -> LinkService.get"},
+    {"requirement_id": "FR-4", "approach": "DELETE /api/v1/links/{code} -> soft delete; resolve raises LinkGone -> 410"},
+    {"requirement_id": "FR-5", "approach": "resolve records a click row; GET .../stats aggregates count, last click and per-day totals"},
+    {"requirement_id": "NFR-1", "approach": "/healthz and /readyz, durable SQLite file in WAL mode, transactional writes, global error handlers"},
+    {"requirement_id": "NFR-2", "approach": "Bound parameters only, URL and code validation, bounded referrer and request-id"},
+    {"requirement_id": "NFR-3", "approach": "Request-id middleware and an access log line per request"},
+    {"requirement_id": "NFR-4", "approach": "Three layers with one-way dependencies, env-driven Settings, unit and API tests, generated OpenAPI"}
+  ],
+  "rollback_plan": "Greenfield: nothing exists to regress. The change is only promoted to the target directory after release approval, and `sdlc rollback` removes the promoted files again.",
+  "limitations": [
+    "Single-writer SQLite: suitable for a prototype or a single instance, not for horizontal scaling",
+    "No authentication, rate limiting or destination vetting in v1",
+    "Analytics are computed on read; no retention policy for click rows"
+  ]
+}

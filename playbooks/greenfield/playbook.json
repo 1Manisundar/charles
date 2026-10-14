@@ -1,0 +1,25 @@
+{
+  "name": "greenfield",
+  "title": "Greenfield: build the URL shortener from scratch",
+  "requirement_file": "requirement.md",
+  "baseline": {"empty": true},
+  "responses": {
+    "requirements": ["responses/requirements.json"],
+    "architecture": ["responses/design.json"],
+    "planning": ["responses/plan.json"],
+    "impl:T1": [{"changeset": "changesets/T1", "rationale": "Package skeleton with typed, environment-driven settings so every later layer is configurable from day one."}],
+    "impl:T2": [{"changeset": "changesets/T2", "rationale": "CSPRNG-based base62 codes; validity check lets callers reject garbage without a database round trip."}],
+    "impl:T3": [{"changeset": "changesets/T3", "rationale": "All SQL isolated in the repository behind a small Database wrapper with explicit transactions and forward-only migrations."}],
+    "impl:T4": [{"changeset": "changesets/T4", "rationale": "Service layer with injected clock and code factory so collision handling and time-based statistics are deterministic under test."}],
+    "impl:T5": [{"changeset": "changesets/T5", "rationale": "Thin HTTP layer: routes delegate to the service, domain errors map to RFC 7807 problem responses, app built by a factory."}],
+    "impl:T6": [{"changeset": "changesets/T6", "rationale": "Unprivileged container with a data volume and a liveness-based health check."}],
+    "documentation": [{"changeset": "changesets/docs", "rationale": "README covering run, use, behaviour, configuration and layout; changelog entry for the initial release."}]
+  },
+  "approvals": [
+    {"checkpoint": "plan-signoff", "decision": "approve", "by": "priya.tech-lead (simulated)", "comment": "Layering and migration approach are sound. Approved for implementation."},
+    {"checkpoint": "release", "decision": "approve", "by": "sam.release-manager (simulated)", "comment": "Checklist green, coverage above threshold. Promote."}
+  ],
+  "faults": [
+    {"node": "architecture", "kind": "transient", "times": 1, "note": "Simulated provider timeout to exercise bounded retry with backoff."}
+  ]
+}

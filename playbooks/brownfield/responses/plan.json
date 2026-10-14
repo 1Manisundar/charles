@@ -1,0 +1,42 @@
+{
+  "summary": "Change the layers in dependency order. The schema migration and the alias validation are independent and run in parallel; the repository and service build on both; the API contract comes last. Each task extends the tests of the layer it touches, and the existing suite is the regression net.",
+  "test_strategy": "Regression first: the existing 65 tests must stay green, with one deliberate edit (three-character codes become valid). New behaviour is tested per layer: the migration against a populated v1 database and against a failing script, alias syntax in the codec, expiry boundaries and alias conflicts in the service with an injected clock, and status codes through the API. The expiry boundary gets a test one microsecond before and exactly at the instant.",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Schema migration 2: expiry and custom-code columns",
+      "description": "Append an additive migration adding links.expires_at (nullable) and links.is_custom (default 0). Test the upgrade of a populated v1 database and the atomicity of a failing migration.",
+      "kind": "migration",
+      "requirement_ids": ["NFR-10", "NFR-11"],
+      "depends_on": [],
+      "writes": ["urlshortener/migrations.py", "tests/test_migrations.py"]
+    },
+    {
+      "id": "T2",
+      "title": "Alias validation",
+      "description": "Add alias syntax and reserved-name validation to the codec and widen the code syntax so aliases are valid codes. Update the one existing test that encoded the old minimum length.",
+      "kind": "code",
+      "requirement_ids": ["FR-12", "FR-13"],
+      "depends_on": [],
+      "writes": ["urlshortener/codec.py", "tests/test_codec.py"]
+    },
+    {
+      "id": "T3",
+      "title": "Expiry and aliases in repository and service",
+      "description": "Persist and load the new columns; validate lifetimes, reserve aliases atomically through the primary key, and refuse to resolve expired links.",
+      "kind": "code",
+      "requirement_ids": ["FR-10", "FR-11", "FR-12", "FR-13", "NFR-10"],
+      "depends_on": ["T1", "T2"],
+      "writes": ["urlshortener/repository.py", "urlshortener/service.py", "tests/test_expiry_alias.py"]
+    },
+    {
+      "id": "T4",
+      "title": "API contract for expiry and aliases",
+      "description": "Expose alias and expires_in_seconds on the create request and expires_at and is_custom on responses; map the new domain errors to 409 and 422; bump the version.",
+      "kind": "code",
+      "requirement_ids": ["FR-10", "FR-11", "FR-12", "FR-13", "NFR-10"],
+      "depends_on": ["T3"],
+      "writes": ["urlshortener/schemas.py", "urlshortener/api.py", "urlshortener/__init__.py", "tests/test_api_expiry_alias.py"]
+    }
+  ]
+}

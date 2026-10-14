@@ -1,0 +1,17 @@
+<<<<<<< SEARCH
+from .db import Database
+=======
+from .db import Database
+from .ratelimit import RateLimiter
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+    app.state.link_service = LinkService(LinkRepository(db), settings)
+=======
+    app.state.link_service = LinkService(LinkRepository(db), settings)
+    # In-process limiters: exact for a single instance. Behind a load balancer each
+    # instance enforces its own budget unless this is moved to a shared store.
+    app.state.rate_limiters = {
+        "create": RateLimiter(settings.rate_limit_create_per_minute),
+        "redirect": RateLimiter(settings.rate_limit_redirect_per_minute),
+    }
+>>>>>>> REPLACE

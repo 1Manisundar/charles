@@ -1,0 +1,722 @@
+{
+  "components": {
+    "schemas": {
+      "CreateLinkRequest": {
+        "properties": {
+          "alias": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Custom short code: 3-32 letters, digits, '-' or '_'. Omit for a random code.",
+            "examples": [
+              "spring-sale"
+            ],
+            "title": "Alias"
+          },
+          "expires_in_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lifetime in seconds (60 to 31536000). Omit for a link that never expires.",
+            "examples": [
+              86400
+            ],
+            "title": "Expires In Seconds"
+          },
+          "url": {
+            "description": "Absolute http(s) URL to shorten.",
+            "examples": [
+              "https://example.com/a/very/long/path?with=query"
+            ],
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "CreateLinkRequest",
+        "type": "object"
+      },
+      "DailyClicks": {
+        "properties": {
+          "clicks": {
+            "description": "Redirects served on that day.",
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "date": {
+            "description": "Calendar day (UTC), YYYY-MM-DD.",
+            "title": "Date",
+            "type": "string"
+          },
+          "unique_visitors": {
+            "default": 0,
+            "description": "Distinct visitors that day, counted with anonymous identifiers that change daily.",
+            "title": "Unique Visitors",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "clicks"
+        ],
+        "title": "DailyClicks",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "schema_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Applied database schema version.",
+            "title": "Schema Version"
+          },
+          "status": {
+            "description": "'ok' when the process is alive, 'ready' when it can serve traffic.",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "LinkResponse": {
+        "properties": {
+          "code": {
+            "description": "Short code identifying the link.",
+            "title": "Code",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "Creation time (UTC).",
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the link stops redirecting; null if never.",
+            "title": "Expires At"
+          },
+          "is_active": {
+            "description": "False once the link has been deleted.",
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_custom": {
+            "default": false,
+            "description": "True if the code was chosen by the caller.",
+            "title": "Is Custom",
+            "type": "boolean"
+          },
+          "long_url": {
+            "description": "Destination URL.",
+            "title": "Long Url",
+            "type": "string"
+          },
+          "short_url": {
+            "description": "Public URL that redirects to long_url.",
+            "title": "Short Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "short_url",
+          "long_url",
+          "created_at",
+          "is_active"
+        ],
+        "title": "LinkResponse",
+        "type": "object"
+      },
+      "Problem": {
+        "description": "Error body (RFC 7807, served as application/problem+json).",
+        "properties": {
+          "detail": {
+            "description": "Explanation specific to this occurrence.",
+            "title": "Detail",
+            "type": "string"
+          },
+          "status": {
+            "description": "HTTP status code.",
+            "title": "Status",
+            "type": "integer"
+          },
+          "title": {
+            "description": "Short, stable summary of the problem.",
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "default": "about:blank",
+            "description": "URI identifying the problem type.",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "status",
+          "detail"
+        ],
+        "title": "Problem",
+        "type": "object"
+      },
+      "ReferrerCount": {
+        "properties": {
+          "clicks": {
+            "description": "Redirects that arrived from that host.",
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "host": {
+            "description": "Host of the referring page.",
+            "title": "Host",
+            "type": "string"
+          }
+        },
+        "required": [
+          "host",
+          "clicks"
+        ],
+        "title": "ReferrerCount",
+        "type": "object"
+      },
+      "ServiceInfo": {
+        "properties": {
+          "docs": {
+            "description": "Path of the interactive API documentation.",
+            "title": "Docs",
+            "type": "string"
+          },
+          "health": {
+            "description": "Path of the liveness probe.",
+            "title": "Health",
+            "type": "string"
+          },
+          "openapi": {
+            "description": "Path of the OpenAPI schema.",
+            "title": "Openapi",
+            "type": "string"
+          },
+          "service": {
+            "description": "Name of the service.",
+            "title": "Service",
+            "type": "string"
+          },
+          "version": {
+            "description": "Running version.",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "service",
+          "version",
+          "docs",
+          "openapi",
+          "health"
+        ],
+        "title": "ServiceInfo",
+        "type": "object"
+      },
+      "StatsResponse": {
+        "properties": {
+          "clicks_by_day": {
+            "description": "Daily redirect counts for the recent window.",
+            "items": {
+              "$ref": "#/components/schemas/DailyClicks"
+            },
+            "title": "Clicks By Day",
+            "type": "array"
+          },
+          "code": {
+            "description": "Short code the statistics belong to.",
+            "title": "Code",
+            "type": "string"
+          },
+          "last_clicked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Time of the most recent redirect, if any.",
+            "title": "Last Clicked At"
+          },
+          "top_referrers": {
+            "description": "Most frequent referring hosts since the link was created.",
+            "items": {
+              "$ref": "#/components/schemas/ReferrerCount"
+            },
+            "title": "Top Referrers",
+            "type": "array"
+          },
+          "total_clicks": {
+            "description": "Redirects served since the link was created.",
+            "title": "Total Clicks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "total_clicks",
+          "last_clicked_at",
+          "clicks_by_day"
+        ],
+        "title": "StatsResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Create short links, follow them, and see how often they are used.",
+    "title": "URL Shortener",
+    "version": "1.2.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "index__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Service index",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/api/v1/links": {
+      "post": {
+        "operationId": "create_link_api_v1_links_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The requested alias is already taken"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The request was rejected by validation"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Rate limit exceeded; retry after the Retry-After delay"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No free short code could be allocated"
+          }
+        },
+        "summary": "Create a short link",
+        "tags": [
+          "links"
+        ]
+      }
+    },
+    "/api/v1/links/{code}": {
+      "delete": {
+        "operationId": "delete_link_api_v1_links__code__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No link with this code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete (deactivate) a link",
+        "tags": [
+          "links"
+        ]
+      },
+      "get": {
+        "operationId": "get_link_api_v1_links__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No link with this code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get a link's metadata",
+        "tags": [
+          "links"
+        ]
+      }
+    },
+    "/api/v1/links/{code}/stats": {
+      "get": {
+        "operationId": "link_stats_api_v1_links__code__stats_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No link with this code"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get a link's click analytics",
+        "tags": [
+          "links"
+        ]
+      }
+    },
+    "/healthz": {
+      "get": {
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Liveness probe",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/readyz": {
+      "get": {
+        "operationId": "readyz_readyz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The database is not reachable"
+          }
+        },
+        "summary": "Readiness probe",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/{code}": {
+      "get": {
+        "operationId": "follow_link__code__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "307": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "No link with this code"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "The link was deleted or has expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Rate limit exceeded; retry after the Retry-After delay"
+          }
+        },
+        "summary": "Follow a short link",
+        "tags": [
+          "redirect"
+        ]
+      }
+    }
+  }
+}

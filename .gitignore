@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+*.db
+*.db-wal
+*.db-shm
+# Orchestrator run output (state, audit log, sandbox workspace). Sample runs
+# that are meant to be read are copied to docs/sample-runs/.
+runs/
+build/
+dist/
+*.egg-info/
+demo/
+work/

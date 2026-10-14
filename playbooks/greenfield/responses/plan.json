@@ -1,0 +1,60 @@
+{
+  "summary": "Build bottom-up along the dependency direction: configuration first, then the codec and the persistence layer in parallel, then the service that combines them, then the HTTP layer. Packaging is independent of the application code and runs alongside.",
+  "test_strategy": "Each task ships with the tests for its layer: pure unit tests for the codec and configuration, repository tests against a real temporary SQLite file, service tests with an injected clock and code factory, and API tests through the ASGI test client. Test docstrings name the requirement ids they cover so traceability can be checked mechanically.",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Project skeleton and configuration",
+      "description": "Create the package, the dependency manifest, the pytest configuration and typed settings read from URLSHORTENER_* environment variables.",
+      "kind": "config",
+      "requirement_ids": ["NFR-4"],
+      "depends_on": [],
+      "writes": ["urlshortener/__init__.py", "urlshortener/config.py", "requirements.txt", "pytest.ini", "tests/test_config.py"]
+    },
+    {
+      "id": "T2",
+      "title": "Short-code codec",
+      "description": "Random base62 code generation from the OS CSPRNG and a syntactic validity check.",
+      "kind": "code",
+      "requirement_ids": ["FR-1", "NFR-2"],
+      "depends_on": ["T1"],
+      "writes": ["urlshortener/codec.py", "tests/test_codec.py"]
+    },
+    {
+      "id": "T3",
+      "title": "Persistence layer",
+      "description": "Schema as versioned migrations, a serialised SQLite connection with explicit transactions and a migration runner, and the repository holding all SQL for links and clicks.",
+      "kind": "code",
+      "requirement_ids": ["FR-3", "FR-4", "FR-5", "NFR-1", "NFR-2"],
+      "depends_on": ["T1"],
+      "writes": ["urlshortener/migrations.py", "urlshortener/db.py", "urlshortener/repository.py", "tests/test_repository.py"]
+    },
+    {
+      "id": "T4",
+      "title": "Link service",
+      "description": "Business rules: URL validation, code allocation with bounded collision retry, redirect resolution with click recording, soft delete and statistics.",
+      "kind": "code",
+      "requirement_ids": ["FR-1", "FR-2", "FR-3", "FR-4", "FR-5", "NFR-1", "NFR-2"],
+      "depends_on": ["T2", "T3"],
+      "writes": ["urlshortener/service.py", "tests/test_service.py"]
+    },
+    {
+      "id": "T5",
+      "title": "HTTP API and application factory",
+      "description": "API contract models, routes, RFC 7807 error mapping, request-id middleware, health probes and the application factory.",
+      "kind": "code",
+      "requirement_ids": ["FR-1", "FR-2", "FR-3", "FR-4", "FR-5", "NFR-1", "NFR-3", "NFR-4"],
+      "depends_on": ["T4"],
+      "writes": ["urlshortener/schemas.py", "urlshortener/api.py", "urlshortener/main.py", "tests/conftest.py", "tests/test_api.py", "tests/test_ops.py"]
+    },
+    {
+      "id": "T6",
+      "title": "Container packaging",
+      "description": "Dockerfile running the service unprivileged with a data volume and a health check.",
+      "kind": "config",
+      "requirement_ids": ["NFR-1"],
+      "depends_on": ["T1"],
+      "writes": ["Dockerfile", ".dockerignore"]
+    }
+  ]
+}

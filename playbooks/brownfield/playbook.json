@@ -1,0 +1,36 @@
+{
+  "name": "brownfield",
+  "title": "Brownfield: add link expiry and custom aliases to the existing service",
+  "requirement_file": "requirement.md",
+  "baseline": {
+    "must_exist": ["urlshortener/service.py", "urlshortener/migrations.py", "tests/test_codec.py"],
+    "must_not_exist": ["tests/test_expiry_alias.py"],
+    "hint": "Run the greenfield scenario against the same --target first."
+  },
+  "responses": {
+    "requirements": ["responses/requirements.json"],
+    "architecture": ["responses/design.json"],
+    "planning": ["responses/plan.json"],
+    "impl:T1": [{"changeset": "changesets/T1", "rationale": "Additive migration appended to the versioned list; upgrade and failure paths proven against real SQLite files."}],
+    "impl:T2": [{"changeset": "changesets/T2", "rationale": "Alias rules live next to code generation; the existing minimum-length test is updated on purpose because three-character aliases are now valid codes."}],
+    "impl:T3": [{"changeset": "changesets/T3", "rationale": "Expiry is one pure function checked on resolve; aliases are reserved by the primary key so two concurrent requests cannot both win."}],
+    "impl:T4": [{"changeset": "changesets/T4", "rationale": "Contract extended with optional fields only, so existing clients are unaffected; new domain errors mapped to 409 and 422."}],
+    "documentation": [{"changeset": "changesets/docs", "rationale": "README and changelog updated for expiry and aliases; API reference regenerated from the code."}]
+  },
+  "approvals": [
+    {"checkpoint": "plan-signoff", "decision": "approve", "by": "priya.tech-lead (simulated)", "comment": "Additive migration and lazy expiry are the right call. Approved."},
+    {"checkpoint": "change-control", "decision": "approve", "by": "dana.dba (simulated)", "comment": "Reviewed migration 2: additive, transactional, app-only rollback. Approved to run."},
+    {"checkpoint": "release", "decision": "approve", "by": "sam.release-manager (simulated)", "comment": "Regression suite green after one rework round; migration tested on v1 data. Promote."}
+  ],
+  "faults": [
+    {
+      "node": "impl:T3",
+      "kind": "corrupt_change",
+      "invocation": 0,
+      "path": "urlshortener/service.py",
+      "search": "now >= link.expires_at",
+      "replace": "now > link.expires_at",
+      "note": "Seeded off-by-one at the expiry boundary in the first implementation attempt, to exercise test failure -> rollback -> targeted rework."
+    }
+  ]
+}

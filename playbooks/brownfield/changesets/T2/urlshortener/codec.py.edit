@@ -1,0 +1,28 @@
+<<<<<<< SEARCH
+_CODE = re.compile(r"[0-9A-Za-z]{4,32}")
+=======
+_CODE = re.compile(r"[0-9A-Za-z_-]{3,32}")
+_ALIAS = re.compile(r"[0-9A-Za-z][0-9A-Za-z_-]{2,31}")
+# Path segments the application serves itself; an alias must never shadow them.
+RESERVED_ALIASES = frozenset({"api", "docs", "redoc", "healthz", "readyz", "metrics", "openapi", "static", "admin"})
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+    return _CODE.fullmatch(code) is not None
+=======
+    return _CODE.fullmatch(code) is not None
+
+
+class InvalidAlias(ValueError):
+    """The requested alias may not be used as a short code."""
+
+
+def validate_alias(alias: str) -> str:
+    """Return the alias unchanged if it is allowed, otherwise raise InvalidAlias."""
+    if _ALIAS.fullmatch(alias) is None:
+        raise InvalidAlias(
+            "alias must be 3-32 characters (letters, digits, '-' or '_') and start with a letter or digit"
+        )
+    if alias.lower() in RESERVED_ALIASES:
+        raise InvalidAlias(f"'{alias}' is a reserved name")
+    return alias
+>>>>>>> REPLACE

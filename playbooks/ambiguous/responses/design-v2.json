@@ -1,0 +1,101 @@
+{
+  "overview": "Three independent additions at the edges of the existing layers. A token-bucket limiter is attached to the create and redirect routes as a dependency. A destination check joins the existing URL validation in the service. Click recording gains an anonymous daily visitor identifier, produced by a dedicated privacy module, so statistics can count unique visitors and rank referrers without holding personal data.",
+  "components": [
+    {"name": "config", "path": "urlshortener/config.py", "responsibility": "Limits, proxy trust and the domain blocklist as settings", "change": "modified"},
+    {"name": "ratelimit", "path": "urlshortener/ratelimit.py", "responsibility": "In-memory token bucket per client with bounded state", "change": "new"},
+    {"name": "safety", "path": "urlshortener/safety.py", "responsibility": "Syntactic vetting of destination URLs", "change": "new"},
+    {"name": "privacy", "path": "urlshortener/privacy.py", "responsibility": "Keyed, daily-rotating visitor identifiers and referrer reduction", "change": "new"},
+    {"name": "migrations", "path": "urlshortener/migrations.py", "responsibility": "Migration 3: clicks.visitor_hash", "change": "modified"},
+    {"name": "repository", "path": "urlshortener/repository.py", "responsibility": "Store the visitor identifier; unique-visitor and referrer aggregates", "change": "modified"},
+    {"name": "service", "path": "urlshortener/service.py", "responsibility": "Call the destination check; record anonymous visitor and referrer host; extend statistics", "change": "modified"},
+    {"name": "schemas", "path": "urlshortener/schemas.py", "responsibility": "unique_visitors per day and top_referrers on the statistics response", "change": "modified"},
+    {"name": "api", "path": "urlshortener/api.py", "responsibility": "Limiter dependencies, 429 and unsafe-destination error mapping, trusted client address resolution", "change": "modified"},
+    {"name": "main", "path": "urlshortener/main.py", "responsibility": "Create the limiters at start-up", "change": "modified"}
+  ],
+  "api": [
+    {"method": "POST", "path": "/api/v1/links", "summary": "May answer 429 (rate limit) and 422 (unsafe destination)", "change": "modified"},
+    {"method": "GET", "path": "/{code}", "summary": "May answer 429 (rate limit)", "change": "modified"},
+    {"method": "GET", "path": "/api/v1/links/{code}/stats", "summary": "Adds unique_visitors per day and top_referrers", "change": "modified"}
+  ],
+  "data_model": [
+    {"entity": "clicks", "change": "ADD COLUMN visitor_hash TEXT NULL - an opaque identifier valid for one UTC day; never an address or a reversible hash of one", "requires_migration": true}
+  ],
+  "impacted_modules": [
+    "urlshortener/config.py",
+    "urlshortener/migrations.py",
+    "urlshortener/repository.py",
+    "urlshortener/service.py",
+    "urlshortener/schemas.py",
+    "urlshortener/api.py",
+    "urlshortener/main.py",
+    "urlshortener/__init__.py",
+    "tests/test_config.py",
+    "tests/test_service.py"
+  ],
+  "decisions": [
+    {
+      "id": "ADR-11",
+      "title": "In-process token bucket",
+      "context": "Abusive clients must be throttled without adding infrastructure to a single-instance service.",
+      "decision": "Keep one token bucket per client address in process memory, with a hard cap on tracked clients (least recently seen evicted). Separate limiters for creation and redirects.",
+      "alternatives": ["A shared store such as Redis (correct across instances, but new infrastructure for a single instance)", "Fixed-window counters (allow a double burst at window edges)"],
+      "consequences": "No new dependency and O(1) per request. Limits are per instance; moving to a shared store is required before scaling out."
+    },
+    {
+      "id": "ADR-12",
+      "title": "Forwarded client address only from a declared trusted proxy",
+      "context": "Behind a proxy the socket address is the proxy; but X-Forwarded-For is client-controlled, so honouring it blindly lets any client choose its own identity and bypass the limiter. (Revised after design review.)",
+      "decision": "Use the socket address by default. Only when URLSHORTENER_TRUST_FORWARDED_FOR is set, use the last entry of X-Forwarded-For - the address the trusted proxy itself observed.",
+      "alternatives": ["Always honour the first X-Forwarded-For entry (first draft; trivially spoofable)", "A configurable list of trusted proxy networks (more flexible; not needed for one proxy)"],
+      "consequences": "Safe by default. Deployments behind a proxy must set one flag; deployments behind several chained proxies are not supported yet."
+    },
+    {
+      "id": "ADR-13",
+      "title": "Rule-based destination vetting inside URL validation",
+      "context": "Confirmed scope is rule-based blocking with no external service.",
+      "decision": "Reject credentials in the URL, non-public addresses in every spelling browsers accept, internal host names, the service's own host and blocklisted domains. No DNS resolution.",
+      "alternatives": ["Resolve the host and check the resulting address (slow, racy against DNS changes, and the service never fetches the URL anyway)", "External reputation service (rejected by the product owner)"],
+      "consequences": "Deterministic and dependency-free. A public name that resolves to a private address is not caught; documented as a limitation."
+    },
+    {
+      "id": "ADR-14",
+      "title": "Unique visitors by a keyed hash under a daily-rotating in-memory key",
+      "context": "Counting distinct visitors needs an identifier that is stable for a visitor, but an unkeyed hash of an IP address is not anonymous: the IPv4 space can be enumerated in minutes, so SHA-256(ip) is personal data in disguise. (Revised after design review.)",
+      "decision": "Identify a visitor as HMAC-SHA256(key, ip + user agent), where the key is random, held only in process memory and replaced every UTC day. Store the truncated digest; never store or log the key, the address or the user agent.",
+      "alternatives": ["Plain SHA-256 of address and user agent (first draft; reversible by enumeration)", "A persistent secret salt (still links a visitor across days and becomes a secret to manage)", "Cookies (changes the redirect response and needs consent)"],
+      "consequences": "Identifiers cannot be reversed, linked across days or recomputed after a restart. Unique counts are per day only, and a restart or a second instance over-counts slightly; accepted in exchange for holding no personal data."
+    },
+    {
+      "id": "ADR-15",
+      "title": "Referrer reduced to host",
+      "context": "Referrer paths and query strings regularly contain identifiers and e-mail addresses.",
+      "decision": "Store only the referring host from now on; aggregate older full-URL rows by host when reading.",
+      "alternatives": ["Keep storing the truncated full URL (retains personal data for no product value)"],
+      "consequences": "Top-referrer statistics work for old and new rows. The full referrer of new clicks is no longer available, which changes one existing test on purpose."
+    }
+  ],
+  "risks": [
+    {"id": "R20", "description": "Rate limits throttle legitimate users who share an address (offices, mobile carriers).", "likelihood": "medium", "impact": "medium", "mitigation": "Generous redirect default, configurable limits, clear 429 with Retry-After."},
+    {"id": "R21", "description": "The destination rules reject legitimate links.", "likelihood": "low", "impact": "medium", "mitigation": "Rules target only non-public and disguised destinations; tested against ordinary public URLs."},
+    {"id": "R22", "description": "Schema migration on the click log.", "likelihood": "low", "impact": "high", "mitigation": "Additive nullable column; change-control approval before the task runs; covered by the existing upgrade tests."},
+    {"id": "R23", "description": "Limiter memory grows with the number of distinct clients.", "likelihood": "medium", "impact": "medium", "mitigation": "Hard cap on tracked clients with least-recently-seen eviction."},
+    {"id": "R24", "description": "A misconfigured proxy flag lets clients spoof their address, or collapses all clients into one bucket.", "likelihood": "medium", "impact": "medium", "mitigation": "Untrusted by default; only the proxy-appended entry is used; behaviour documented with the setting."},
+    {"id": "R25", "description": "Visitor analytics are mistaken for personal data in an audit.", "likelihood": "low", "impact": "high", "mitigation": "Keyed, rotating, memory-only identifier; a test asserts that no address, user agent or referrer path reaches the database."}
+  ],
+  "requirement_coverage": [
+    {"requirement_id": "FR-20", "approach": "Limiter dependency on POST /api/v1/links keyed by the trusted client address; RateLimited -> 429 + Retry-After"},
+    {"requirement_id": "FR-21", "approach": "Second limiter on GET /{code}; probes and API reads have no dependency"},
+    {"requirement_id": "FR-22", "approach": "safety.check_destination called from LinkService URL validation; UnsafeDestination -> 422"},
+    {"requirement_id": "FR-23", "approach": "Anonymous visitor identifier stored per click; COUNT(DISTINCT) per day and referrer counts aggregated by host"},
+    {"requirement_id": "NFR-20", "approach": "privacy.VisitorHasher (HMAC, daily in-memory key) and privacy.referrer_host; no address in storage or logs"},
+    {"requirement_id": "NFR-21", "approach": "Bounded limiter state; O(1) hashing and bucket update per request"},
+    {"requirement_id": "NFR-22", "approach": "Additive response fields and nullable column; safe defaults; older referrer rows folded by host"}
+  ],
+  "rollback_plan": "Redeploy 1.1.0: it ignores clicks.visitor_hash and the new settings. Limits and destination checks disappear with the code; no data needs repair. In this pipeline nothing reaches the target before release approval, and `sdlc rollback` restores it afterwards.",
+  "limitations": [
+    "Rate limits and unique-visitor keys are per instance and reset on restart",
+    "Destination vetting does not resolve DNS",
+    "Unique-visitor counts are per day and treat several people behind one address and browser as one visitor",
+    "Only a single trusted proxy is supported for X-Forwarded-For"
+  ]
+}

@@ -1,0 +1,35 @@
+<<<<<<< SEARCH
+def test_oversized_referrers_are_truncated(service, repo):
+    """NFR-2: attacker-controlled headers cannot bloat the analytics table."""
+    link = service.create("https://example.com")
+    service.resolve(link.code, referrer="https://ref.example/" + "x" * 5000)
+
+    stored = repo._db.query("SELECT referrer FROM clicks WHERE code = ?", (link.code,))[0]["referrer"]
+    assert len(stored) == 512
+=======
+def test_only_the_referrer_host_is_stored(service, repo):
+    """NFR-2 NFR-20: a hostile Referer header can neither bloat the table nor smuggle personal data into it."""
+    link = service.create("https://example.com")
+    service.resolve(link.code, referrer="https://ref.example/" + "x" * 5000 + "?email=jane@corp.example")
+
+    stored = repo._db.query("SELECT referrer FROM clicks WHERE code = ?", (link.code,))[0]["referrer"]
+    assert stored == "ref.example"
+
+
+def test_unsafe_destinations_are_invalid_urls(service):
+    """FR-22: the safety check is part of URL validation, so no unsafe link is ever stored."""
+    for url in ("http://127.0.0.1/admin", "https://user:pw@example.com/", "http://localhost:8000/abc1234"):
+        with pytest.raises(InvalidUrl):
+            service.create(url)
+
+
+def test_referrers_recorded_by_older_releases_are_folded_into_hosts(service, repo):
+    """NFR-22 FR-23: full referrer URLs stored before this change still aggregate correctly."""
+    link = service.create("https://example.com")
+    now = service._clock()
+    repo.record_click(link.code, now, "https://news.example/old/full/url?x=1")  # as release 1.x stored it
+    service.resolve(link.code, referrer="https://news.example/another/page")
+    service.resolve(link.code, referrer="https://blog.example/")
+
+    assert service.stats(link.code).top_referrers == [("news.example", 2), ("blog.example", 1)]
+>>>>>>> REPLACE

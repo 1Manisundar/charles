@@ -1,0 +1,93 @@
+{
+  "title": "Make the link service more robust and safer, with better click insight",
+  "summary": "The request names three symptoms - load ('getting hammered'), bad destinations ('dodgy links') and a wish for visitor insight - without saying what should change. Each has several plausible readings with very different cost and risk, and the third touches personal data. The requirements below are the reading the analyst recommends; they must not be built until a product owner has confirmed the three open questions.",
+  "scenario_type": "ambiguous",
+  "functional": [
+    {
+      "id": "FR-20",
+      "statement": "Excessive link creation by one client is throttled.",
+      "acceptance_criteria": ["A client exceeding a configured rate receives a clear, retryable rejection"],
+      "priority": "must"
+    },
+    {
+      "id": "FR-21",
+      "statement": "Excessive redirect traffic from one client is throttled.",
+      "acceptance_criteria": ["Redirects have their own, looser limit; health probes are never limited"],
+      "priority": "should"
+    },
+    {
+      "id": "FR-22",
+      "statement": "Links to unsafe destinations cannot be created.",
+      "acceptance_criteria": ["A destination judged unsafe is rejected at creation with an explanatory error"],
+      "priority": "must"
+    },
+    {
+      "id": "FR-23",
+      "statement": "Link statistics give more insight into the audience.",
+      "acceptance_criteria": ["Statistics expose audience measures beyond raw click counts"],
+      "priority": "should"
+    }
+  ],
+  "non_functional": [
+    {
+      "id": "NFR-20",
+      "statement": "Privacy: audience insight must not create a personal-data liability.",
+      "acceptance_criteria": ["What is stored about a visitor is agreed explicitly before implementation"],
+      "priority": "must"
+    },
+    {
+      "id": "NFR-21",
+      "statement": "The protections themselves must not become a resource risk.",
+      "acceptance_criteria": ["Any per-client state is bounded in memory"],
+      "priority": "must"
+    },
+    {
+      "id": "NFR-22",
+      "statement": "Backward compatibility with existing links, clients and data.",
+      "acceptance_criteria": ["Existing API fields and existing links behave as before"],
+      "priority": "must"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "Q1",
+      "question": "What does 'getting hammered' mean we should do?",
+      "why_it_matters": "Throttling abusive clients, caching hot redirects and scaling out are different projects. Only the first is a code change of bounded size; picking wrong either leaves the problem or builds infrastructure nobody asked for.",
+      "options": [
+        "Rate-limit each client (stricter for link creation than for redirects) and answer 429 when exceeded",
+        "Cache redirect lookups to cut database load for popular links",
+        "Scale out to several instances behind a load balancer with a shared database"
+      ],
+      "recommended": "Rate-limit each client (stricter for link creation than for redirects) and answer 429 when exceeded"
+    },
+    {
+      "id": "Q2",
+      "question": "What makes a link 'dodgy', and how should it be stopped?",
+      "why_it_matters": "Blocking by rule is cheap and has no external dependency; a reputation service catches real phishing but adds a vendor, latency, cost and a new failure mode on the create path.",
+      "options": [
+        "Refuse destinations that are internal or private addresses, disguised with credentials, pointing back at the service, or on a configurable blocklist",
+        "Check every destination against an external URL-reputation service",
+        "Hold new links in a manual moderation queue"
+      ],
+      "recommended": "Refuse destinations that are internal or private addresses, disguised with credentials, pointing back at the service, or on a configurable blocklist"
+    },
+    {
+      "id": "Q3",
+      "question": "What does 'who is clicking' need to reveal?",
+      "why_it_matters": "Storing IP addresses or user agents makes the click log personal data, with consent, retention and breach obligations. Aggregate measures answer most product questions without that liability.",
+      "options": [
+        "Aggregates only: unique visitors per day and top referring sites, with nothing stored that identifies a person",
+        "Store each visitor's IP address and user agent with every click for detailed analysis",
+        "Approximate location per click derived from the IP address"
+      ],
+      "recommended": "Aggregates only: unique visitors per day and top referring sites, with nothing stored that identifies a person"
+    }
+  ],
+  "assumptions": [
+    {"id": "A20", "statement": "The three concerns are independent and can ship together as one hardening release.", "source": "analyst"}
+  ],
+  "out_of_scope": [
+    "Authentication and per-user quotas",
+    "Retroactive vetting of links that already exist"
+  ]
+}

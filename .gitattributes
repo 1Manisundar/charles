@@ -1,0 +1,3 @@
+# Playbook change sets are replayed byte-for-byte and the committed service is
+# compared against the pipeline's output, so line endings must not vary by platform.
+* text=auto eol=lf

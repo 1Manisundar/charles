@@ -1,0 +1,13 @@
+<<<<<<< SEARCH
+## 1.0.0 - Initial release
+=======
+## 1.1.0 - Expiring links and custom aliases
+
+- `POST /api/v1/links` accepts `expires_in_seconds`; an expired link answers `410 Gone`.
+- `POST /api/v1/links` accepts `alias`; `409` if taken, `422` if malformed or reserved.
+- Link responses include `expires_at` and `is_custom`.
+- Schema migration 2 (additive: `links.expires_at`, `links.is_custom`) is applied
+  automatically at start-up. Existing links and existing clients are unaffected.
+
+## 1.0.0 - Initial release
+>>>>>>> REPLACE

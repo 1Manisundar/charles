@@ -1,0 +1,92 @@
+<<<<<<< SEARCH
+from .codec import generate_code, is_valid_code
+=======
+from .codec import generate_code, is_valid_code, validate_alias
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+MAX_CODE_ATTEMPTS = 5
+MAX_REFERRER_LENGTH = 512
+=======
+MAX_CODE_ATTEMPTS = 5
+MAX_REFERRER_LENGTH = 512
+MIN_TTL_SECONDS = 60
+MAX_TTL_SECONDS = 365 * 24 * 3600
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+class CodeSpaceExhausted(RuntimeError):
+    """No free short code was found within the retry budget."""
+=======
+class CodeSpaceExhausted(RuntimeError):
+    """No free short code was found within the retry budget."""
+
+
+class AliasTaken(Exception):
+    """The requested alias already identifies another link."""
+
+
+class InvalidExpiry(ValueError):
+    """The requested lifetime is outside the allowed range."""
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+=======
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def is_expired(link: Link, now: datetime) -> bool:
+    """A link is expired from its expiry instant onwards, the instant itself included."""
+    return link.expires_at is not None and now >= link.expires_at
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+    def create(self, url: str) -> Link:
+        long_url = self._validate_url(url)
+        now = self._clock()
+        # Random codes can collide; the database decides, and we retry a bounded number of times.
+        for _ in range(MAX_CODE_ATTEMPTS):
+            code = self._code_factory(self._settings.code_length)
+            try:
+                return self._repository.insert(code, long_url, now)
+            except DuplicateCode:
+                continue
+=======
+    def create(self, url: str, alias: str | None = None, expires_in_seconds: int | None = None) -> Link:
+        long_url = self._validate_url(url)
+        now = self._clock()
+        expires_at = self._expiry(now, expires_in_seconds)
+        if alias is not None:
+            validate_alias(alias)
+            try:
+                return self._repository.insert(alias, long_url, now, expires_at=expires_at, is_custom=True)
+            except DuplicateCode:
+                # Never retry or substitute: the caller asked for exactly this code.
+                raise AliasTaken(alias) from None
+        # Random codes can collide; the database decides, and we retry a bounded number of times.
+        for _ in range(MAX_CODE_ATTEMPTS):
+            code = self._code_factory(self._settings.code_length)
+            try:
+                return self._repository.insert(code, long_url, now, expires_at=expires_at)
+            except DuplicateCode:
+                continue
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+        if not link.is_active:
+            raise LinkGone(code)
+=======
+        if not link.is_active or is_expired(link, now):
+            raise LinkGone(code)
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+    def _validate_url(self, url: str) -> str:
+=======
+    @staticmethod
+    def _expiry(now: datetime, expires_in_seconds: int | None) -> datetime | None:
+        if expires_in_seconds is None:
+            return None
+        if not MIN_TTL_SECONDS <= expires_in_seconds <= MAX_TTL_SECONDS:
+            raise InvalidExpiry(f"expires_in_seconds must be between {MIN_TTL_SECONDS} and {MAX_TTL_SECONDS}")
+        return now + timedelta(seconds=expires_in_seconds)
+
+    def _validate_url(self, url: str) -> str:
+>>>>>>> REPLACE

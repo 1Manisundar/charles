@@ -1,0 +1,26 @@
+<<<<<<< SEARCH
+    stats_days: int = 30
+=======
+    stats_days: int = 30
+    # Requests per minute per client; 0 disables the limiter.
+    rate_limit_create_per_minute: int = 30
+    rate_limit_redirect_per_minute: int = 600
+    # Only enable behind exactly one trusted reverse proxy that sets X-Forwarded-For.
+    trust_forwarded_for: bool = False
+    blocked_domains: tuple[str, ...] = ()
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+            stats_days=int(read("STATS_DAYS", defaults.stats_days)),
+=======
+            stats_days=int(read("STATS_DAYS", defaults.stats_days)),
+            rate_limit_create_per_minute=int(
+                read("RATE_LIMIT_CREATE_PER_MINUTE", defaults.rate_limit_create_per_minute)
+            ),
+            rate_limit_redirect_per_minute=int(
+                read("RATE_LIMIT_REDIRECT_PER_MINUTE", defaults.rate_limit_redirect_per_minute)
+            ),
+            trust_forwarded_for=read("TRUST_FORWARDED_FOR", "false").strip().lower() in ("1", "true", "yes"),
+            blocked_domains=tuple(
+                domain.strip().lower() for domain in read("BLOCKED_DOMAINS", "").split(",") if domain.strip()
+            ),
+>>>>>>> REPLACE

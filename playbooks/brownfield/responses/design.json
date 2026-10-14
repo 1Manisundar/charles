@@ -1,0 +1,94 @@
+{
+  "overview": "The change threads two optional inputs through every existing layer without adding new ones: the schema gains two nullable/defaulted columns, the repository reads and writes them, the service validates them and enforces expiry lazily at redirect time, and the API contract exposes them. The redirect path gains one in-memory comparison and no extra query.",
+  "components": [
+    {"name": "migrations", "path": "urlshortener/migrations.py", "responsibility": "Add migration 2: links.expires_at (nullable) and links.is_custom (default 0)", "change": "modified"},
+    {"name": "codec", "path": "urlshortener/codec.py", "responsibility": "Alias syntax and reserved-name validation; code syntax widened to admit aliases", "change": "modified"},
+    {"name": "repository", "path": "urlshortener/repository.py", "responsibility": "Persist and load expires_at and is_custom", "change": "modified"},
+    {"name": "service", "path": "urlshortener/service.py", "responsibility": "Lifetime bounds, alias reservation, expiry check on resolve", "change": "modified"},
+    {"name": "schemas", "path": "urlshortener/schemas.py", "responsibility": "Optional alias and expires_in_seconds on the request; expires_at and is_custom on the response", "change": "modified"},
+    {"name": "api", "path": "urlshortener/api.py", "responsibility": "Pass the new inputs through; map AliasTaken to 409 and invalid alias or expiry to 422", "change": "modified"},
+    {"name": "package", "path": "urlshortener/__init__.py", "responsibility": "Version 1.1.0", "change": "modified"},
+    {"name": "db", "path": "urlshortener/db.py", "responsibility": "Migration runner - reused as is", "change": "unchanged"},
+    {"name": "main", "path": "urlshortener/main.py", "responsibility": "Application factory - unchanged", "change": "unchanged"}
+  ],
+  "api": [
+    {"method": "POST", "path": "/api/v1/links", "summary": "Accepts optional alias and expires_in_seconds; may answer 409", "change": "modified"},
+    {"method": "GET", "path": "/api/v1/links/{code}", "summary": "Response adds expires_at and is_custom", "change": "modified"},
+    {"method": "GET", "path": "/{code}", "summary": "Answers 410 for expired links as well as deleted ones", "change": "modified"}
+  ],
+  "data_model": [
+    {"entity": "links", "change": "ADD COLUMN expires_at TEXT NULL; ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0", "requires_migration": true}
+  ],
+  "impacted_modules": [
+    "urlshortener/migrations.py",
+    "urlshortener/codec.py",
+    "urlshortener/repository.py",
+    "urlshortener/service.py",
+    "urlshortener/schemas.py",
+    "urlshortener/api.py",
+    "urlshortener/__init__.py",
+    "tests/test_codec.py"
+  ],
+  "decisions": [
+    {
+      "id": "ADR-6",
+      "title": "Relative lifetime in, absolute expiry stored",
+      "context": "Marketing thinks in durations; the redirect path needs a cheap comparison.",
+      "decision": "Accept expires_in_seconds, compute expires_at once at creation from the server clock and store that.",
+      "alternatives": ["Accept an absolute timestamp (exposes clients to clock skew and time-zone mistakes)", "Store the duration and add it on every read (work on the hot path for no benefit)"],
+      "consequences": "One comparison per redirect; the stored value is unambiguous. Changing a link's lifetime later needs a new endpoint."
+    },
+    {
+      "id": "ADR-7",
+      "title": "Lazy expiry, inclusive of the expiry instant",
+      "context": "Something must stop expired links from redirecting.",
+      "decision": "Check expiry when the link is resolved; a link is gone when now >= expires_at. No background job.",
+      "alternatives": ["A reaper job that deactivates expired links (needs scheduling and still races with requests)", "Filtering in SQL (hides the link from metadata and statistics too)"],
+      "consequences": "Exact, race-free behaviour with no moving parts. Expired rows remain until a retention policy exists."
+    },
+    {
+      "id": "ADR-8",
+      "title": "Aliases share the code namespace",
+      "context": "An alias must be unique against other aliases and against generated codes.",
+      "decision": "Store the alias in links.code. The primary key gives uniqueness atomically; a conflict is reported as 409 and never retried or substituted.",
+      "alternatives": ["A separate alias table (second lookup on every redirect, two uniqueness rules to keep consistent)", "Check-then-insert (race between two requests for the same alias)"],
+      "consequences": "No new query on the redirect path. The existing code syntax check must admit '-' and '_' and three-character codes, which changes one existing test on purpose."
+    },
+    {
+      "id": "ADR-9",
+      "title": "Reserved names instead of a separate URL prefix",
+      "context": "Aliases share the root path with service routes such as /docs and /healthz.",
+      "decision": "Refuse a case-insensitive list of reserved names, and keep service routes registered before the catch-all redirect route.",
+      "alternatives": ["Move redirects under /r/{code} (breaks every existing short link)"],
+      "consequences": "Existing links keep their URLs. New top-level routes must be added to the reserved list."
+    },
+    {
+      "id": "ADR-10",
+      "title": "Additive migration only",
+      "context": "The database already holds links and clicks.",
+      "decision": "Migration 2 only adds a nullable column and a defaulted column; no rewrite, no backfill.",
+      "alternatives": ["Rebuild the table with the new shape (long lock, irreversible, no benefit)"],
+      "consequences": "Instant on any table size and safe to roll the application back: release 1.0 reads rows by column name and ignores the new columns."
+    }
+  ],
+  "risks": [
+    {"id": "R10", "description": "The schema migration damages or loses existing links.", "likelihood": "low", "impact": "high", "mitigation": "Additive DDL only, applied in one transaction, tested against a populated v1 database and against a failing migration; requires change-control approval before the task runs."},
+    {"id": "R11", "description": "An off-by-one at the expiry boundary lets a link live too long or die too early.", "likelihood": "medium", "impact": "medium", "mitigation": "The rule is a single function with tests one microsecond before and exactly at the expiry instant."},
+    {"id": "R12", "description": "An alias shadows a service route or squats on a brand name.", "likelihood": "medium", "impact": "medium", "mitigation": "Reserved-name list and route ordering; ownership and moderation of aliases need authentication and are out of scope."},
+    {"id": "R13", "description": "Widening the code syntax changes behaviour for existing clients.", "likelihood": "low", "impact": "low", "mitigation": "Only lookups of previously malformed codes change (still 404, now after a database miss); covered by the updated codec test."}
+  ],
+  "requirement_coverage": [
+    {"requirement_id": "FR-10", "approach": "expires_in_seconds validated against bounds in LinkService._expiry; expires_at stored and returned"},
+    {"requirement_id": "FR-11", "approach": "is_expired(link, now) checked in LinkService.resolve before the click is recorded; LinkGone maps to 410"},
+    {"requirement_id": "FR-12", "approach": "alias validated by codec.validate_alias and inserted as the primary key with is_custom = 1"},
+    {"requirement_id": "FR-13", "approach": "Primary-key conflict -> AliasTaken -> 409; reserved names and syntax -> InvalidAlias -> 422; soft delete keeps codes taken"},
+    {"requirement_id": "NFR-10", "approach": "All new inputs are optional with defaults equal to current behaviour; existing tests retained"},
+    {"requirement_id": "NFR-11", "approach": "Migration 2 is additive and transactional; upgrade and failure paths are tested"}
+  ],
+  "rollback_plan": "Application rollback is sufficient: redeploy 1.0.0. It reads rows by column name and ignores expires_at and is_custom, so the upgraded schema needs no down-migration. Links created with a lifetime would stop expiring and aliases keep working as ordinary codes. In this pipeline the change stays in the sandbox until release approval, and `sdlc rollback` restores the target directory.",
+  "limitations": [
+    "Aliases are case-sensitive: 'Spring' and 'spring' are different links",
+    "Expired links are never purged",
+    "A link's lifetime and alias cannot be changed after creation"
+  ]
+}

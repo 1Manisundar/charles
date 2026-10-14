@@ -1,0 +1,1 @@
+The link service has been getting hammered lately and we had a scare with some dodgy links last week. Can you make it more robust and safer? Also, product would like better insight into who is clicking.
