@@ -9,6 +9,7 @@ import pytest
 
 from agentic_sdlc.agents.codebase import CodebaseAnalyst
 from agentic_sdlc.agents.model_agents import impact_report
+from agentic_sdlc.agents.verifier import _parse_junit
 from agentic_sdlc.audit import AuditLog
 from agentic_sdlc.faults import parse_fault
 from agentic_sdlc.gates import GATES, GateContext
@@ -355,3 +356,20 @@ def test_edit_blocks_and_fault_specs_parse():
     assert parse_fault("impl:T1:permanent") == {"node": "impl:T1", "kind": "permanent", "times": 1}
     with pytest.raises(ValueError):
         parse_fault("architecture:explode")
+
+
+def test_junit_failures_name_the_test_file_even_for_collection_errors(tmp_path):
+    """Found in a live run: a module that failed to import was reported as '.py::tests.test_db'."""
+    junit = tmp_path / "junit.xml"
+    junit.write_text(
+        '<testsuites><testsuite><testcase classname="tests.test_api" name="test_ok"/>'
+        '<testcase classname="tests.test_api" name="test_bad"><failure message="boom">trace</failure></testcase>'
+        '<testcase classname="" name="tests.test_db"><error message="collection failure">ImportError</error></testcase>'
+        "</testsuite></testsuites>",
+        encoding="utf-8",
+    )
+
+    totals, failures = _parse_junit(junit)
+
+    assert totals == {"tests": 3, "failures": 1, "errors": 1, "skipped": 0}
+    assert [f["test"] for f in failures] == ["tests/test_api.py::test_bad", "tests/test_db.py"]

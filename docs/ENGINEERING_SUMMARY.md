@@ -100,11 +100,18 @@ recovery about 1.5 s, median active latency about 5 s (dominated by running the 
 | Lost or disputed history | Append-only hash-chained log; metrics derived only from it | Tamper-evident, not tamper-proof |
 | Concurrent change to the target | Promotion refused if the target differs from the seeded baseline | No merge; re-run required |
 
-Validation performed: both test-suites green (106 and 201); lint clean; `sdlc demo` from a
-clean directory; live HTTP smoke test of the built service; resilience drill with a
-permanent fault, a tight budget, a safe-stop and a resume; interactive approval path
-exercised through the terminal prompt. Not performed: a run against the real model API; a
-build of the generated container image.
+Validation performed:
+- both test-suites green (121 and 201) and lint clean;
+- `sdlc demo` from a clean directory;
+- a live HTTP smoke test of the built service;
+- a resilience drill with a permanent fault, a tight budget, a safe-stop and a resume;
+- the interactive approval path, exercised through the terminal prompt;
+- three greenfield runs against a real free model on OpenRouter
+  ([TESTING.md](TESTING.md#live-runs)).
+
+None of the live runs reached release, and none touched the target. They found eight
+defects, all fixed with regression tests or configuration. Not performed: a run against a
+stronger model; a build of the generated container image.
 
 ## 5. Assumptions
 
@@ -122,7 +129,8 @@ build of the generated container image.
 
 The full list is in [TESTING.md](TESTING.md#limitations). The ones a reader should not miss:
 
-1. The live model provider is unit-tested but has never called the real API.
+1. Live mode has been run only on a free model, and no live run reached release. The
+   Anthropic provider has never called the real API.
 2. Demo content comes from curated playbooks, and demo reviewers are simulated.
 3. Roles are asserted, not authenticated; the audit log is tamper-evident, not tamper-proof.
 4. Single process, single machine; agents are isolated by a sandbox directory, not a container.
@@ -130,8 +138,9 @@ The full list is in [TESTING.md](TESTING.md#limitations). The ones a reader shou
 
 ## 7. What I would do next
 
-1. Run live mode against the API with an evaluation set of requirements, measure first-pass
-   gate success per stage, and tune prompts against that number.
+1. Run live mode with a stronger model and an evaluation set of requirements. Measure
+   first-pass gate success per stage (0.82 and 0.55 on the free model) and tune prompts
+   against that number.
 2. Give the implementer tools (read, search, run tests) inside the sandbox instead of a
    single call per task, keeping the same gates around it.
 3. Put real identity behind checkpoints and anchor the audit head hash externally.

@@ -33,7 +33,7 @@ flowchart LR
         WS[workspace.py<br/>sandbox + journal]
     end
     ENG --> MA & DA
-    MA --> PR[providers<br/>scripted / anthropic]
+    MA --> PR[providers<br/>scripted / openrouter / anthropic]
     DA --> WS
     ENG --> ST & AU & WS
     AU --> MET[metrics.py] --> REP[report.py]

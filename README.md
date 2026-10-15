@@ -52,7 +52,7 @@ See [service/README.md](service/README.md) and [service/docs/API.md](service/doc
 ### Run the tests
 
 ```bash
-python -m pytest                  # orchestrator: 106 tests, ~20 s (includes the three end-to-end scenarios)
+python -m pytest                  # orchestrator: 121 tests, ~25 s (includes the three end-to-end scenarios)
 cd service && python -m pytest    # generated service: 201 tests, ~3 s
 ```
 
@@ -132,10 +132,15 @@ are slow (30 s to 4 min a call) and OpenRouter allows 50 free requests a day, so
 live runs a larger `--max-wall-clock` and a `--max-invocations` that fits the quota;
 `resume` accepts both to extend a run that safe-stopped on a budget.
 
-**What live runs have shown.** See [docs/TESTING.md](docs/TESTING.md#live-runs) for the
-record. In short: the control plane behaved as designed against a real model, and the
-first live runs found and fixed six defects that the scripted runs could not. RESULT_PLACEHOLDER
-The Anthropic provider is still tested only against a fake client.
+**What live runs have shown.** The full record is in [docs/TESTING.md](docs/TESTING.md#live-runs).
+- Three greenfield runs on a free OpenRouter model. None reached release: one failed safely
+  after its rework bound, and one stopped on its invocation cap.
+- Neither run touched the target.
+- The control plane behaved as designed against unscripted output: gates caught real
+  errors, human checkpoints sent back three flawed designs, and every stop was resumable.
+- The runs found eight defects that the scripted runs could not, all now fixed.
+- The Anthropic provider is still tested only against a fake client, and no stronger
+  model has been measured.
 
 ## Repository map
 

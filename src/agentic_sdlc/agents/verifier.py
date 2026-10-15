@@ -47,10 +47,12 @@ def _parse_junit(path: Path) -> tuple[dict[str, int], list[dict[str, str]]]:
             problem = case.find(kind)
             if problem is not None:
                 totals[f"{kind}s"] += 1
-                classname = case.get("classname", "")
+                classname, name = case.get("classname", ""), case.get("name", "")
+                # A module that fails to import is reported with no classname and the module as its name.
+                test = f"{classname.replace('.', '/')}.py::{name}" if classname else f"{name.replace('.', '/')}.py"
                 failures.append(
                     {
-                        "test": f"{classname.replace('.', '/')}.py::{case.get('name', '')}",
+                        "test": test,
                         "kind": kind,
                         "message": (problem.get("message") or "")[:500],
                         "detail": (problem.text or "")[-1500:],
